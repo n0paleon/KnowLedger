@@ -7,3 +7,5 @@ db/exports/
 package-lock.json
 *.log
 .idea/
+docker-compose.prod.yaml
+docker-compose.dev.yaml

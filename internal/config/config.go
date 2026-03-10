@@ -74,7 +74,7 @@ func LoadConfig(filename string) (*Config, error) {
 	cfg.SetDefault("app.dev", false)
 
 	cfg.SetDefault("log.level", "info")
-	cfg.SetDefault("log.output", []string{"stdout"})
+	cfg.SetDefault("log.output", []string{"stderr"})
 
 	cfg.SetDefault("http.listen_addr", ":3000")
 

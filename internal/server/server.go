@@ -62,12 +62,12 @@ func NewHttpServer(cfg *config.Config) *fiber.App {
 	if !cfg.App.Dev {
 		staticFS := web.FS
 		staticSub, _ := fs.Sub(staticFS, "static")
-		serv.Use(static.New("", static.Config{
+		serv.Use("/*", static.New("", static.Config{
 			FS:     staticSub,
-			Browse: true,
+			Browse: false,
 		}))
 	} else {
-		serv.Use(static.New("./web/static", static.Config{
+		serv.Use("/*", static.New("./web/static", static.Config{
 			CacheDuration: 0,
 		}))
 	}
