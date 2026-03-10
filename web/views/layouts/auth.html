@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include "partials/head.html" %}
+
+<body style="background-color: #f5f7ff; min-height: 100vh; display: flex; flex-direction: column; font-family: ui-sans-serif, system-ui, sans-serif;">
+
+<!-- Scroll Progress Bar -->
+<div id="scrollBar" style="height: 2px; background: #818cf8; width: 0; position: fixed; top: 0; left: 0; z-index: 60; transition: width 0.1s;"></div>
+
+<!-- Background Blobs -->
+<div style="position:fixed; width:500px; height:500px; background:rgba(99,102,241,0.15); border-radius:9999px; filter:blur(80px); top:-150px; right:-100px; pointer-events:none; z-index:0;"></div>
+<div style="position:fixed; width:400px; height:400px; background:rgba(139,92,246,0.1); border-radius:9999px; filter:blur(80px); bottom:-100px; left:-100px; pointer-events:none; z-index:0;"></div>
+
+<main style="flex:1; display:flex; align-items:center; justify-content:center; padding:2rem 1rem; position:relative; z-index:1;">
+    {{ embed|safe }}
+</main>
+
+<script src="/assets/js/main.js"></script>
+</body>
+</html>

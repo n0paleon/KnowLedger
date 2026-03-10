@@ -1,0 +1,195 @@
+{% macro factDetailsScript() export %}
+<script>
+    (function () {
+        // --- Char counter ---
+        const contentArea = document.getElementById('content')
+        const charCount   = document.getElementById('charCount')
+
+        function updateCharCount() {
+            const len = contentArea.value.length
+            charCount.textContent = `${len} chars`
+            charCount.className = len > 500
+                ? 'text-xs font-mono text-red-400'
+                : len > 300
+                    ? 'text-xs font-mono text-amber-400'
+                    : 'text-xs font-mono text-gray-400'
+        }
+        contentArea.addEventListener('input', updateCharCount)
+        updateCharCount()
+
+        // --- Tag preview ---
+        const tagsInput  = document.getElementById('tagsInput')
+        const tagPreview = document.getElementById('tagPreview')
+
+        function updateTagPreview() {
+            tagPreview.innerHTML = ''
+            tagsInput.value.split(',').forEach(tag => {
+                const trimmed = tag.trim()
+                if (!trimmed) return
+                const span = document.createElement('span')
+                span.className = 'text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-1 rounded font-medium'
+                span.textContent = '#' + trimmed
+                tagPreview.appendChild(span)
+            })
+        }
+        tagsInput.addEventListener('input', updateTagPreview)
+        updateTagPreview()
+
+        // --- Media dropzone ---
+        const mediaDropzone = document.getElementById('mediaDropzone')
+        if (!mediaDropzone) return
+
+        const fileInput      = document.getElementById('mediaFile')
+        const mediaKeyInput  = document.getElementById('mediaKey')
+        const submitBtn      = document.getElementById('submitBtn')
+        const stateIdle      = document.getElementById('dropzoneIdle')
+        const stateUploading = document.getElementById('dropzoneUploading')
+        const stateSuccess   = document.getElementById('dropzoneSuccess')
+        const stateError     = document.getElementById('dropzoneError')
+        const successName    = document.getElementById('dropzoneSuccessName')
+        const errorMsg       = document.getElementById('dropzoneErrorMsg')
+        const removeBtn      = document.getElementById('mediaRemoveBtn')
+        const retryBtn       = document.getElementById('mediaRetryBtn')
+
+        function showState(state) {
+            [stateIdle, stateUploading, stateSuccess, stateError].forEach(s => s.classList.add('hidden'))
+            state.classList.remove('hidden')
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B'
+            const k     = 1024
+            const sizes = ['B', 'KB', 'MB', 'GB']
+            const i     = Math.floor(Math.log(bytes) / Math.log(k))
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+        }
+
+        function renderPreview(file, url) {
+            const existing = document.getElementById('mediaPreview')
+            if (existing) existing.remove()
+
+            const wrapper = document.createElement('div')
+            wrapper.id        = 'mediaPreview'
+            wrapper.className = 'rounded-lg overflow-hidden border border-gray-200 bg-gray-50'
+
+            const type        = file.type || ''
+            const name        = file.name || ''
+            const nameShort   = truncateChars(name, 20)
+            const sizeText    = file.size || ''
+
+            let mediaEl = ''
+            if (type.startsWith('image/')) {
+                mediaEl = `<img src="${url}" alt="${nameShort}" class="w-full max-h-64 object-contain bg-gray-100"/>`
+            } else if (type.startsWith('video/')) {
+                mediaEl = `<video controls class="w-full max-h-64 bg-black"><source src="${url}" type="${type}"/></video>`
+            } else if (type.startsWith('audio/')) {
+                mediaEl = `<div class="p-4"><audio controls class="w-full"><source src="${url}" type="${type}"/></audio></div>`
+            } else {
+                mediaEl = `
+            <div class="flex items-center gap-3 p-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <div class="min-w-0">
+                    <p class="text-sm text-gray-700 font-medium">${nameShort}</p>
+                    <p class="text-xs text-gray-400">${type}</p>
+                </div>
+            </div>`
+            }
+
+            wrapper.innerHTML = `
+                ${mediaEl}
+                <div class="px-3 py-2 border-t border-gray-200 bg-white flex items-center justify-between gap-2">
+                    <p class="text-xs text-gray-400">${nameShort}${sizeText ? ' · ' + sizeText : ''}</p>
+                    <a href="${url}" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700 hover:underline flex-shrink-0">Open ↗</a>
+                </div>`
+
+            fileInput.parentNode.insertBefore(wrapper, fileInput)
+        }
+
+
+        function removePreview() {
+            const preview = document.getElementById('mediaPreview')
+            if (preview) preview.remove()
+        }
+
+        let objectUrl = null
+
+        async function uploadFile(file) {
+            if (objectUrl) URL.revokeObjectURL(objectUrl)
+            objectUrl = URL.createObjectURL(file)
+            renderPreview(file, objectUrl)
+
+            showState(stateUploading)
+            submitBtn.disabled = true
+
+            const formData = new FormData()
+            formData.append('media', file)
+
+            try {
+                const res  = await fetch('/admin/api/media', { method: 'POST', body: formData })
+                const json = await res.json()
+                if (!res.ok) throw new Error(json.error || 'Upload failed')
+
+                URL.revokeObjectURL(objectUrl)
+                objectUrl = null
+
+                renderPreview(
+                    { name: json.key, type: file.type, size: json.size },
+                    json.url
+                )
+
+                mediaKeyInput.value     = json.key
+                successName.textContent = truncateChars(json.key, 20)
+                showState(stateSuccess)
+            } catch (err) {
+                mediaKeyInput.value  = ''
+                errorMsg.textContent = err.message
+                removePreview()
+                showState(stateError)
+            } finally {
+                submitBtn.disabled = false
+            }
+        }
+
+        function resetMedia() {
+            mediaKeyInput.value = ''
+            fileInput.value     = ''
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl)
+                objectUrl = null
+            }
+            removePreview()
+            showState(stateIdle)
+        }
+
+        mediaDropzone.addEventListener('click', (e) => {
+            if (e.target.closest('button')) return
+            fileInput.click()
+        })
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) uploadFile(fileInput.files[0])
+        })
+
+        mediaDropzone.addEventListener('dragover', (e) => {
+            e.preventDefault()
+            mediaDropzone.classList.add('border-indigo-400', 'bg-indigo-50/40')
+        })
+
+        mediaDropzone.addEventListener('dragleave', () => {
+            mediaDropzone.classList.remove('border-indigo-400', 'bg-indigo-50/40')
+        })
+
+        mediaDropzone.addEventListener('drop', (e) => {
+            e.preventDefault()
+            mediaDropzone.classList.remove('border-indigo-400', 'bg-indigo-50/40')
+            const file = e.dataTransfer.files[0]
+            if (file) uploadFile(file)
+        })
+
+        removeBtn.addEventListener('click', resetMedia)
+        retryBtn.addEventListener('click', () => { resetMedia(); fileInput.click() })
+    })()
+</script>
+{% endmacro %}

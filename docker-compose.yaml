@@ -1,0 +1,8 @@
+name: knowledger
+
+services:
+  web:
+    image: knowledger:latest
+    env_file: .env
+    ports:
+      - "3000:3000"

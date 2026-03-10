@@ -1,0 +1,10 @@
+tmp/
+builds/
+*.env
+*.env.*
+config.yaml
+db/exports/
+package-lock.json
+*.log
+.idea/
+.git/

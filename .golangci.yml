@@ -1,0 +1,47 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - ineffassign
+    - errcheck
+    - errorlint
+    - wrapcheck
+    - revive
+    - bodyclose
+    - unused
+    - unconvert
+    - gocritic
+    - misspell
+    - prealloc
+    - gochecknoglobals
+    - whitespace
+
+linters-settings:
+  revive:
+    rules:
+      - name: var-naming
+      - name: indent-error-flow
+      - name: error-return
+      - name: exported
+      - name: blank-imports
+      - name: early-return
+      - name: superfluous-else
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
