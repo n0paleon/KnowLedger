@@ -29,6 +29,56 @@ func NewFactRepository(db *gorm.DB) *FactRepository {
 	}
 }
 
+// --- Scopes ---
+
+func factWithSearch(search string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if search == "" {
+			return db
+		}
+		return db.Where("content ILIKE ?", "%"+search+"%")
+	}
+}
+
+func factWithStatus(status model.FactStatus) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if status == "" {
+			return db
+		}
+		return db.Where("status = ?", status)
+	}
+}
+
+func factWithSort(sortBy, sortDir string) func(db *gorm.DB) *gorm.DB {
+	allowed := map[string]bool{
+		"created_at": true,
+		"updated_at": true,
+	}
+	return func(db *gorm.DB) *gorm.DB {
+		if !allowed[sortBy] {
+			sortBy = "created_at"
+		}
+		if sortDir != "asc" && sortDir != "desc" {
+			sortDir = "desc"
+		}
+		return db.Order(sortBy + " " + sortDir)
+	}
+}
+
+func factWithPagination(page, limit int) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if page <= 0 {
+			page = 1
+		}
+		if limit <= 0 || limit > 100 {
+			limit = 10
+		}
+		return db.Limit(limit).Offset((page - 1) * limit)
+	}
+}
+
+// --- Repository Methods
+
 func (r *FactRepository) Create(ctx context.Context, fact *model.Fact) error {
 	return r.db.WithContext(ctx).Create(fact).Error
 }
@@ -71,21 +121,32 @@ func (r *FactRepository) GetRandomOne(ctx context.Context) (*model.Fact, error) 
 	return &fact, nil
 }
 
-func (r *FactRepository) GetFacts(ctx context.Context, page, pageSize int) ([]*model.Fact, error) {
+func (r *FactRepository) GetFacts(ctx context.Context, params model.ListFactsParams) (*model.Paginated[*model.Fact], error) {
 	var facts []*model.Fact
+	var total int64
 
-	offset := (page - 1) * pageSize
-	err := r.db.WithContext(ctx).
+	base := r.db.WithContext(ctx).Model(&model.Fact{}).
+		Scopes(
+			factWithSearch(params.Search),
+			factWithStatus(params.Status),
+		)
+
+	if err := base.Count(&total).Error; err != nil {
+		return nil, fmt.Errorf("failed to count facts: %w", err)
+	}
+
+	err := base.
+		Scopes(
+			factWithSort(params.SortBy, params.SortDir),
+			factWithPagination(params.Page, params.Limit),
+		).
 		Preload("Tags").
-		Limit(pageSize).
-		Offset(offset).
-		Order("created_at DESC").
 		Find(&facts).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find facts: %w", err)
 	}
 
-	return facts, nil
+	return model.NewPaginated(facts, total, params.Page, params.Limit), nil
 }
 
 // NOTE: Sudah dioptimasi untuk menghindari N+1 query

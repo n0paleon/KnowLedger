@@ -147,8 +147,15 @@ func (s *FunFactService) GetOneFunFact(ctx context.Context, id string) (*model.F
 	return fact, nil
 }
 
-func (s *FunFactService) GetFacts(ctx context.Context, page, pageSize int) ([]*model.Fact, error) {
-	facts, err := s.factRepository.GetFacts(ctx, page, pageSize)
+func (s *FunFactService) GetFacts(ctx context.Context, params *dto.ListFactsParams) (*model.Paginated[*model.Fact], error) {
+	facts, err := s.factRepository.GetFacts(ctx, model.ListFactsParams{
+		Page:    params.Page,
+		Limit:   params.Limit,
+		Search:  params.Search,
+		Status:  params.Status,
+		SortBy:  params.SortBy,
+		SortDir: params.SortDir,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get facts: %w", err)
 	}

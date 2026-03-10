@@ -21,6 +21,10 @@ storage:
     secret_key: "[BUCKET_SECRET_ACCESS_KEY]"
     api_endpoint: "[R2_API_ENDPOINT]"
     public_endpoint: "[R2_PUBLIC_ENDPOINT/DOMAIN]"
+  redis:
+    addr: "localhost:6379"
+    password: ""
+    db: 0
 
 worker:
   pool_size: 1000

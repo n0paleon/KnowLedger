@@ -1,7 +1,8 @@
-package storage
+package r2
 
 import (
 	"KnowLedger/internal/model"
+	"KnowLedger/internal/storage"
 	"KnowLedger/pkg/utils"
 	"bytes"
 	"context"
@@ -208,7 +209,7 @@ func (r *R2CASStorage) DeleteBatch(ctx context.Context, keys []string) error {
 	return nil
 }
 
-func (r *R2CASStorage) ScanAll(ctx context.Context, fn func(item ScanResult) error) error {
+func (r *R2CASStorage) ScanAll(ctx context.Context, fn func(item storage.ScanResult) error) error {
 	var continuationToken *string
 
 	for {
@@ -221,10 +222,11 @@ func (r *R2CASStorage) ScanAll(ctx context.Context, fn func(item ScanResult) err
 		}
 
 		for _, obj := range output.Contents {
-			result := ScanResult{
-				Key:  aws.ToString(obj.Key),
-				Size: aws.ToInt64(obj.Size),
-				ETag: aws.ToString(obj.ETag),
+			result := storage.ScanResult{
+				Key:          aws.ToString(obj.Key),
+				Size:         aws.ToInt64(obj.Size),
+				ETag:         aws.ToString(obj.ETag),
+				LastModified: aws.ToTime(obj.LastModified),
 			}
 
 			if err := fn(result); err != nil {

@@ -58,12 +58,17 @@ func (h *AdminHandler) CreateFunFact(c fiber.Ctx) error {
 }
 
 func (h *AdminHandler) ShowDashboardIndex(c fiber.Ctx) error {
-	page := fiber.Query[int](c, "page")
-	limit := fiber.Query[int](c, "limit")
-
-	req := &dto.GetFactsRequest{
+	page := fiber.Query[int](c, "page", 0)
+	limit := fiber.Query[int](c, "limit", 0)
+	req := &dto.ListFactsParams{
 		Page:  1,
 		Limit: 20,
+	}
+
+	if err := c.Bind().Query(req); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
 
 	if page == 0 || limit == 0 {
@@ -76,7 +81,7 @@ func (h *AdminHandler) ShowDashboardIndex(c fiber.Ctx) error {
 		})
 	}
 
-	facts, err := h.funFactService.GetFacts(c, req.Page, req.Limit)
+	facts, err := h.funFactService.GetFacts(c, req)
 	if err != nil {
 		h.log.Error("GetFacts error", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -87,7 +92,10 @@ func (h *AdminHandler) ShowDashboardIndex(c fiber.Ctx) error {
 	return c.Render("pages/admin/index",
 		dto.RenderData{
 			Title: "Dashboard",
-			Data:  facts,
+			Data: fiber.Map{
+				"Facts":  facts,
+				"Filter": req,
+			},
 		}.ToMap(),
 		"layouts/main",
 	)

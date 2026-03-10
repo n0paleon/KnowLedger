@@ -38,7 +38,14 @@ type DatabaseConfig struct {
 }
 
 type StorageConfig struct {
-	R2 R2Config `mapstructure:"r2"`
+	R2    R2Config    `mapstructure:"r2"`
+	Redis RedisConfig `mapstructure:"redis"`
+}
+
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
 
 type R2Config struct {
@@ -80,6 +87,8 @@ func LoadConfig(filename string) (*Config, error) {
 
 	cfg.SetDefault("worker.pool_size", 100)
 	cfg.SetDefault("gc.interval_seconds", 60)
+
+	cfg.SetDefault("redis.addr", "localhost:6379")
 
 	bindEnvs(cfg, Config{})
 

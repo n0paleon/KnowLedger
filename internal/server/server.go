@@ -5,13 +5,18 @@ import (
 	"KnowLedger/web"
 	"io/fs"
 	"net/http"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/dustin/go-humanize"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/extractors"
+	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/gofiber/storage/redis/v3"
 	"github.com/gofiber/template/django/v4"
+	redigo "github.com/redis/go-redis/v9"
 )
 
 type StructValidator struct {
@@ -35,7 +40,7 @@ func humanizeBytes(v interface{}) string {
 	return ""
 }
 
-func NewHttpServer(cfg *config.Config) *fiber.App {
+func NewHttpServer(cfg *config.Config, redisClient redigo.UniversalClient) *fiber.App {
 	engine := django.New("web/views", ".html")
 	engine.Reload(true)
 
@@ -62,15 +67,31 @@ func NewHttpServer(cfg *config.Config) *fiber.App {
 	if !cfg.App.Dev {
 		staticFS := web.FS
 		staticSub, _ := fs.Sub(staticFS, "static")
-		serv.Use("/*", static.New("", static.Config{
+		serv.Use(static.New("", static.Config{
 			FS:     staticSub,
 			Browse: false,
 		}))
 	} else {
-		serv.Use("/*", static.New("./web/static", static.Config{
+		serv.Use(static.New("./web/static", static.Config{
 			CacheDuration: 0,
 		}))
 	}
 
+	setupSessionStorage(serv, redisClient)
+
 	return serv
+}
+
+func setupSessionStorage(app *fiber.App, redisClient redigo.UniversalClient) {
+	store := redis.NewFromConnection(redisClient)
+
+	app.Use(session.New(session.Config{
+		Storage:         store,
+		CookieSecure:    true,           // HTTPS only
+		CookieHTTPOnly:  true,           // Prevent XSS
+		CookieSameSite:  "Lax",          // CSRF protection
+		IdleTimeout:     8 * time.Hour,  // Session timeout, after N-minute of inactivity, session will be auto expire
+		AbsoluteTimeout: 48 * time.Hour, // Maximum session life, force expire after N-hours regardless of activity
+		Extractor:       extractors.FromCookie("__Host-session_id"),
+	}))
 }

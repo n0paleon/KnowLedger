@@ -1,7 +1,6 @@
-package storage_test
+package r2_test
 
 import (
-	"KnowLedger/internal/storage"
 	"context"
 	"os"
 	"testing"
@@ -10,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newIntegrationStorage(t *testing.T) *storage.R2CASStorage {
+func newIntegrationStorage(t *testing.T) *R2CASStorage {
 	t.Helper()
 
 	vars := []string{"R2_PUBLIC_ENDPOINT", "R2_ACCESS_KEY", "R2_SECRET_KEY", "R2_BUCKET_NAME", "R2_API_ENDPOINT"}
@@ -20,7 +19,7 @@ func newIntegrationStorage(t *testing.T) *storage.R2CASStorage {
 		}
 	}
 
-	s, err := storage.NewR2CASStorage(
+	s, err := NewR2CASStorage(
 		os.Getenv("R2_BUCKET_NAME"),
 		os.Getenv("R2_ACCESS_KEY"),
 		os.Getenv("R2_SECRET_KEY"),

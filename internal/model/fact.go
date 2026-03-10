@@ -57,3 +57,12 @@ type FactTag struct {
 	FactID string `gorm:"primaryKey"`
 	TagID  string `gorm:"primaryKey"`
 }
+
+type ListFactsParams struct {
+	Page    int
+	Limit   int
+	Search  string
+	Status  FactStatus
+	SortBy  string
+	SortDir string
+}

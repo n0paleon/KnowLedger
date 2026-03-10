@@ -3,12 +3,8 @@ package server
 import (
 	"KnowLedger/internal/server/handler"
 	"KnowLedger/internal/server/middleware"
-	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/extractors"
-	"github.com/gofiber/fiber/v3/middleware/session"
-	"github.com/gofiber/storage/memory/v2"
 )
 
 func SetupRoutes(
@@ -18,8 +14,6 @@ func SetupRoutes(
 	publicHandler *handler.PublicHandler,
 	authHandler *handler.AuthHandler,
 ) {
-	setupSessionStorage(app) // setup storage for sessions
-
 	admin := app.Group("/admin")
 	admin.Use(middleware.RequireAuth)
 
@@ -42,18 +36,4 @@ func SetupRoutes(
 
 	auth.Get("/admin", authHandler.ShowLogin).Name("Show Admin Login")
 	auth.Post("/admin", authHandler.Login).Name("Admin Login")
-}
-
-func setupSessionStorage(app *fiber.App) {
-	app.Use(session.New(session.Config{
-		Storage: memory.New(memory.Config{
-			GCInterval: 1 * time.Minute,
-		}),
-		CookieSecure:    true,           // HTTPS only
-		CookieHTTPOnly:  true,           // Prevent XSS
-		CookieSameSite:  "Lax",          // CSRF protection
-		IdleTimeout:     8 * time.Hour,  // Session timeout, after N-minute of inactivity, session will be auto expire
-		AbsoluteTimeout: 48 * time.Hour, // Maximum session life, force expire after N-hours regardless of activity
-		Extractor:       extractors.FromCookie("__Host-session_id"),
-	}))
 }

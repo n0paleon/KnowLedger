@@ -9,6 +9,8 @@ import (
 	"KnowLedger/internal/server/handler"
 	"KnowLedger/internal/service"
 	"KnowLedger/internal/storage"
+	"KnowLedger/internal/storage/cache"
+	"KnowLedger/internal/storage/r2"
 	"KnowLedger/internal/workerpool"
 	"context"
 	"flag"
@@ -49,12 +51,13 @@ func main() {
 			func(cfg *config.Config) (*gorm.DB, error) {
 				return database.Connect(cfg.Database.DSN)
 			},
-			func(cfg *config.Config) (storage.Storage, error) {
-				return storage.NewR2CASStorage(
+			func(cfg *config.Config) (storage.FileStorage, error) {
+				return r2.NewR2CASStorage(
 					cfg.Storage.R2.BucketName, cfg.Storage.R2.AccessKey,
 					cfg.Storage.R2.SecretKey, cfg.Storage.R2.APIEndpoint, cfg.Storage.R2.PublicEndpoint,
 				)
 			},
+			cache.NewRedisUniversalClient, // cache storage
 
 			// Repositories
 			repository.NewFactRepository,
@@ -64,7 +67,7 @@ func main() {
 			// Services
 			service.NewMediaService,
 			service.NewFactService,
-			func(factRepo *repository.FactRepository, storage storage.Storage, pool *workerpool.Pool, log *zap.Logger, cfg *config.Config) *service.GCService {
+			func(factRepo *repository.FactRepository, storage storage.FileStorage, pool *workerpool.Pool, log *zap.Logger, cfg *config.Config) *service.GCService {
 				return service.NewGCService(service.GCServiceConfig{
 					FactRepository: factRepo,
 					Storage:        storage,

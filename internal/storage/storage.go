@@ -3,9 +3,10 @@ package storage
 import (
 	"KnowLedger/internal/model"
 	"context"
+	"time"
 )
 
-type Storage interface {
+type FileStorage interface {
 	Upload(ctx context.Context, data []byte) (*model.MediaItem, error)
 	Delete(ctx context.Context, key string) error
 	Exists(ctx context.Context, key string) (bool, error)
@@ -16,8 +17,9 @@ type Storage interface {
 }
 
 type ScanResult struct {
-	Key         string
-	Size        int64
-	ContentType string
-	ETag        string
+	Key          string
+	Size         int64
+	ContentType  string
+	ETag         string
+	LastModified time.Time
 }

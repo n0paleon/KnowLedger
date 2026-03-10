@@ -11,11 +11,11 @@ import (
 )
 
 type MediaService struct {
-	storage storage.Storage
+	storage storage.FileStorage
 	log     *zap.Logger
 }
 
-func NewMediaService(storage storage.Storage, logger *zap.Logger) *MediaService {
+func NewMediaService(storage storage.FileStorage, logger *zap.Logger) *MediaService {
 	return &MediaService{
 		storage: storage,
 		log:     logger,

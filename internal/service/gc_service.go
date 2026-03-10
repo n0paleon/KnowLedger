@@ -16,7 +16,7 @@ import (
 
 type GCService struct {
 	factRepository *repository.FactRepository
-	storage        storage.Storage
+	storage        storage.FileStorage
 	pool           *workerpool.Pool
 	log            *zap.Logger
 	interval       time.Duration
@@ -25,7 +25,7 @@ type GCService struct {
 
 type GCServiceConfig struct {
 	FactRepository *repository.FactRepository
-	Storage        storage.Storage
+	Storage        storage.FileStorage
 	Pool           *workerpool.Pool
 	Log            *zap.Logger
 	Interval       time.Duration
@@ -93,6 +93,10 @@ func (s *GCService) cleanupObjectStorage() {
 
 	var orphanKeys []string
 	if err := s.storage.ScanAll(ctx, func(item storage.ScanResult) error {
+		if time.Since(item.LastModified) < time.Hour {
+			return nil
+		}
+
 		if _, known := keySet[item.Key]; !known {
 			orphanKeys = append(orphanKeys, item.Key)
 		}
