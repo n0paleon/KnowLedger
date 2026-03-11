@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
 	"go.uber.org/zap"
@@ -105,6 +106,7 @@ func registerHooks(
 	db *gorm.DB,
 	gcService *service.GCService,
 	adminRepo *repository.AdminRepository,
+	redisClient redis.UniversalClient,
 ) {
 	server.SetupRoutes(serv, adminHandler, adminApiHandler, publicHandler, authHandler)
 
@@ -112,6 +114,11 @@ func registerHooks(
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			pingResult := redisClient.Ping(ctx)
+			if err := pingResult.Err(); err != nil {
+				log.Fatal("redis client error", zap.Error(err))
+			}
+
 			service.SeedAdminIfEmpty(adminRepo, cfg) // seed admin account if empty
 
 			log.Info("pool started", zap.Int("capacity", pool.Cap()))

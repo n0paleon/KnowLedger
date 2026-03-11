@@ -186,3 +186,23 @@
 {% endif %}
 {% endif %}
 {% endmacro %}
+
+{% macro mainPageHeader(title, totalCount, totalLabel, currentPage) export %}
+<div class="flex flex-col gap-2 mb-6 sm:flex-row sm:justify-between sm:items-center">
+
+    <div class="flex items-center gap-3 min-w-0">
+        <h1 class="text-2xl font-bold text-indigo-800 whitespace-nowrap">{{ title }}</h1>
+        <span class="text-sm font-medium text-gray-500 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full whitespace-nowrap shrink-0">
+            {{ totalCount }} {{ totalLabel }}
+        </span>
+    </div>
+
+    <div class="flex items-center space-x-2 shrink-0">
+        <span class="text-xs font-semibold uppercase text-gray-400">Current</span>
+        <span class="text-sm bg-indigo-100 px-3 py-1 rounded-full text-indigo-700 font-bold">
+            Page {{ currentPage }}
+        </span>
+    </div>
+
+</div>
+{% endmacro %}
