@@ -24,6 +24,12 @@ func NewAuthHandler(adminRepo *repository.AdminRepository, logger *zap.Logger) *
 }
 
 func (h *AuthHandler) ShowLogin(c fiber.Ctx) error {
+	sess := session.FromContext(c)
+
+	if sess.Get("authenticated") == true {
+		return c.Redirect().Route("Show Fun Facts")
+	}
+
 	return c.Render("pages/admin/login", dto.RenderData{
 		Title: "Login",
 	}.ToMap(), "layouts/auth")
