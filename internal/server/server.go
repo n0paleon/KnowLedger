@@ -12,6 +12,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/extractors"
+	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/session"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/gofiber/storage/redis/v3"
@@ -73,6 +74,8 @@ func NewHttpServer(cfg *config.Config, redisClient redigo.UniversalClient) *fibe
 			Compress: true,
 			MaxAge:   3600,
 		}))
+
+		setupCompressionMiddleware(serv)
 	} else {
 		serv.Use(static.New("./web/static", static.Config{
 			CacheDuration: 0,
@@ -82,6 +85,13 @@ func NewHttpServer(cfg *config.Config, redisClient redigo.UniversalClient) *fibe
 	setupSessionStorage(serv, redisClient)
 
 	return serv
+}
+
+func setupCompressionMiddleware(app *fiber.App) {
+	compressor := compress.New(compress.Config{
+		Level: compress.LevelDefault,
+	})
+	app.Use(compressor)
 }
 
 func setupSessionStorage(app *fiber.App, redisClient redigo.UniversalClient) {
