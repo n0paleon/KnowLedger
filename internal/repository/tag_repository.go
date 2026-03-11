@@ -83,6 +83,7 @@ func (r *TagRepository) GetTags(ctx context.Context, params model.ListTagsParams
 			Select("tags.*, COUNT(fact_tags.fact_id) AS total_facts").
 			Joins("LEFT JOIN fact_tags ON fact_tags.tag_id = tags.id").
 			Group("tags.id").
+			Order("tags.id ASC").
 			Scopes(WithPagination(params.Page, params.Limit)).
 			Find(&tags).Error; err != nil {
 			return fmt.Errorf("failed to get tags: %w", err)

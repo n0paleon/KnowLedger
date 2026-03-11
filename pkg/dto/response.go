@@ -1,17 +1,22 @@
 package dto
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"github.com/gofiber/fiber/v3"
+	"github.com/iancoleman/orderedmap"
+)
 
 type RenderData struct {
-	Title string `handlebars:"Title"`
-	Data  any    `handlebars:"Data"`
-	Error string `handlebars:"Error"`
+	Title string
+	Data  any
+	Error string
 }
 
 func (r RenderData) ToMap() fiber.Map {
-	return fiber.Map{
-		"Title": r.Title,
-		"Data":  r.Data,
-		"Error": r.Error,
-	}
+	o := orderedmap.New()
+
+	o.Set("Title", r.Title)
+	o.Set("Data", r.Data)
+	o.Set("Error", r.Error)
+
+	return o.Values()
 }
