@@ -9,3 +9,4 @@ package-lock.json
 .idea/
 docker-compose.prod.yaml
 docker-compose.dev.yaml
+node_modules

@@ -59,5 +59,5 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 	sess.Set("username", admin.Username)
 	sess.Set("authenticated", true)
 
-	return c.Redirect().Route("Show Admin Dashboard")
+	return c.Redirect().Route("Show Fun Facts")
 }

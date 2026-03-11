@@ -193,3 +193,46 @@
     })()
 </script>
 {% endmacro %}
+
+{% macro paginationScript(currentPage, totalPages) export %}
+<script>
+    const currentPage = {{ currentPage }};
+    const totalPages  = {{ totalPages }};
+
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+
+    if (currentPage <= 1)          btnPrev.disabled = true;
+    if (currentPage >= totalPages) btnNext.disabled = true;
+
+    function getFilterParams() {
+        const form = document.getElementById('filterForm');
+        const params = new URLSearchParams(new FormData(form));
+        params.delete('page');
+        return params;
+    }
+
+    function nextPage() {
+        if (currentPage < totalPages) {
+            const params = getFilterParams();
+            params.set('page', currentPage + 1);
+            window.location.search = params.toString();
+        }
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            const params = getFilterParams();
+            params.set('page', currentPage - 1);
+            window.location.search = params.toString();
+        }
+    }
+
+    document.getElementById('filterForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const params = getFilterParams();
+        params.set('page', '1');
+        window.location.search = params.toString();
+    });
+</script>
+{% endmacro %}

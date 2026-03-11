@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
 
@@ -56,4 +57,46 @@ func (r *TagRepository) Count(ctx context.Context) (int64, error) {
 	}
 
 	return total, nil
+}
+
+func (r *TagRepository) GetTags(ctx context.Context, params model.ListTagsParams) (*model.Paginated[*model.Tag], error) {
+	var (
+		tags  []*model.Tag
+		total int64
+	)
+
+	base := r.db.WithContext(ctx).Model(&model.Tag{})
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		countDB := base.Session(&gorm.Session{})
+		if err := countDB.Count(&total).Error; err != nil {
+			return fmt.Errorf("failed to count tags: %w", err)
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		dataDB := base.Session(&gorm.Session{})
+		if err := dataDB.
+			Select("tags.*, COUNT(fact_tags.fact_id) AS total_facts").
+			Joins("LEFT JOIN fact_tags ON fact_tags.tag_id = tags.id").
+			Group("tags.id").
+			Scopes(WithPagination(params.Page, params.Limit)).
+			Find(&tags).Error; err != nil {
+			return fmt.Errorf("failed to get tags: %w", err)
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return model.NewPaginated(tags, total, params.Page, params.Limit), nil
+}
+
+func (r *TagRepository) Delete(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.Tag{}).Error
 }

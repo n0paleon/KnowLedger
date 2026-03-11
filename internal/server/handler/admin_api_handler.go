@@ -44,6 +44,26 @@ func (h *AdminApiHandler) DeleteFunFact(c fiber.Ctx) error {
 	})
 }
 
+func (h *AdminApiHandler) DeleteTag(c fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "id is required",
+		})
+	}
+
+	if err := h.funFactService.DeleteTag(c, id); err != nil {
+		h.log.Error("DeleteTag error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+	})
+}
+
 func (h *AdminApiHandler) UploadMedia(c fiber.Ctx) error {
 	file, err := c.FormFile("media")
 	if err != nil {

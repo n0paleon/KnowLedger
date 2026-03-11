@@ -29,7 +29,10 @@ func NewFactService(db *gorm.DB, factRepo *repository.FactRepository, tagRepo *r
 }
 
 func (s *FunFactService) DeleteFact(ctx context.Context, id string) error {
-	return s.factRepository.Delete(ctx, id)
+	if err := s.factRepository.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete fact: %w", err)
+	}
+	return nil
 }
 
 func (s *FunFactService) CreateFact(ctx context.Context, fact *dto.PostCreateFunFactRequest) error {
@@ -184,4 +187,22 @@ func (s *FunFactService) UpdateFunFact(ctx context.Context, id string, request *
 	}
 
 	return fact, nil
+}
+
+func (s *FunFactService) GetTags(ctx context.Context, params *dto.ListTagsParams) (*model.Paginated[*model.Tag], error) {
+	tags, err := s.tagRepository.GetTags(ctx, model.ListTagsParams{
+		Page:  params.Page,
+		Limit: params.Limit,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tags: %w", err)
+	}
+	return tags, nil
+}
+
+func (s *FunFactService) DeleteTag(ctx context.Context, id string) error {
+	if err := s.tagRepository.Delete(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete tag: %w", err)
+	}
+	return nil
 }

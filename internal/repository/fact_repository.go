@@ -65,18 +65,6 @@ func factWithSort(sortBy, sortDir string) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-func factWithPagination(page, limit int) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		if page <= 0 {
-			page = 1
-		}
-		if limit <= 0 || limit > 100 {
-			limit = 10
-		}
-		return db.Limit(limit).Offset((page - 1) * limit)
-	}
-}
-
 // --- Repository Methods
 
 func (r *FactRepository) Create(ctx context.Context, fact *model.Fact) error {
@@ -138,7 +126,7 @@ func (r *FactRepository) GetFacts(ctx context.Context, params model.ListFactsPar
 	err := base.
 		Scopes(
 			factWithSort(params.SortBy, params.SortDir),
-			factWithPagination(params.Page, params.Limit),
+			WithPagination(params.Page, params.Limit),
 		).
 		Preload("Tags").
 		Find(&facts).Error

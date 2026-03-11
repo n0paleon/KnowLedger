@@ -3,7 +3,6 @@ package handler
 import (
 	"KnowLedger/internal/service"
 	"KnowLedger/pkg/dto"
-	"fmt"
 
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
@@ -22,7 +21,7 @@ func NewAdminHandler(funFactService *service.FunFactService, logger *zap.Logger)
 }
 
 func (h *AdminHandler) ShowCreateFunFact(c fiber.Ctx) error {
-	return c.Render("pages/admin/create-funfact", dto.RenderData{
+	return c.Render("pages/admin/facts/create", dto.RenderData{
 		Title: "Create Fun Fact",
 	}.ToMap())
 }
@@ -37,7 +36,7 @@ func (h *AdminHandler) CreateFunFact(c fiber.Ctx) error {
 			"success": false,
 			"msg":     err.Error(),
 		}
-		return c.Render("pages/admin/create-funfact", renderData.ToMap())
+		return c.Render("pages/admin/facts/create", renderData.ToMap())
 	}
 
 	err := h.funFactService.CreateFact(c, req)
@@ -47,23 +46,20 @@ func (h *AdminHandler) CreateFunFact(c fiber.Ctx) error {
 			"success": false,
 			"msg":     err.Error(),
 		}
-		return c.Render("pages/admin/create-funfact", renderData.ToMap())
+		return c.Render("pages/admin/facts/create", renderData.ToMap())
 	}
 
 	renderData.Data = fiber.Map{
 		"success": true,
 		"msg":     "Data created successfully",
 	}
-	return c.Render("pages/admin/create-funfact", renderData.ToMap())
+	return c.Render("pages/admin/facts/create", renderData.ToMap())
 }
 
-func (h *AdminHandler) ShowDashboardIndex(c fiber.Ctx) error {
+func (h *AdminHandler) ShowFunFacts(c fiber.Ctx) error {
 	page := fiber.Query[int](c, "page", 0)
 	limit := fiber.Query[int](c, "limit", 0)
-	req := &dto.ListFactsParams{
-		Page:  1,
-		Limit: 20,
-	}
+	req := new(dto.ListFactsParams)
 
 	if err := c.Bind().Query(req); err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -72,7 +68,12 @@ func (h *AdminHandler) ShowDashboardIndex(c fiber.Ctx) error {
 	}
 
 	if page == 0 || limit == 0 {
-		return c.Redirect().To(fmt.Sprintf("/admin?page=%d&limit=%d", req.Page, req.Limit))
+		return c.Redirect().Route("Show Fun Facts", fiber.RedirectConfig{
+			Queries: map[string]string{
+				"page":  "1",
+				"limit": "20",
+			},
+		})
 	}
 
 	if err := c.Bind().Query(req); err != nil {
@@ -89,7 +90,7 @@ func (h *AdminHandler) ShowDashboardIndex(c fiber.Ctx) error {
 		})
 	}
 
-	return c.Render("pages/admin/index",
+	return c.Render("pages/admin/facts/index",
 		dto.RenderData{
 			Title: "Dashboard",
 			Data: fiber.Map{
@@ -116,7 +117,7 @@ func (h *AdminHandler) ShowEditFunFact(c fiber.Ctx) error {
 		})
 	}
 
-	return c.Render("pages/admin/edit-funfact", dto.RenderData{
+	return c.Render("pages/admin/facts/edit", dto.RenderData{
 		Title: "Edit Fun Fact",
 		Data: fiber.Map{
 			"Fact": fact,
@@ -148,7 +149,7 @@ func (h *AdminHandler) EditFunFact(c fiber.Ctx) error {
 			"success": false,
 			"error":   err.Error(),
 		}
-		return c.Render("pages/admin/edit-funfact", renderData.ToMap())
+		return c.Render("pages/admin/facts/edit", renderData.ToMap())
 	}
 
 	renderData.Data = fiber.Map{
@@ -156,5 +157,42 @@ func (h *AdminHandler) EditFunFact(c fiber.Ctx) error {
 		"msg":     "Data updated successfully",
 		"Fact":    updatedFact,
 	}
-	return c.Render("pages/admin/edit-funfact", renderData.ToMap())
+	return c.Render("pages/admin/facts/edit", renderData.ToMap())
+}
+
+func (h *AdminHandler) ShowTags(c fiber.Ctx) error {
+	page := fiber.Query[int](c, "page", 0)
+	limit := fiber.Query[int](c, "limit", 0)
+	req := new(dto.ListTagsParams)
+
+	if err := c.Bind().Query(req); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if page == 0 || limit == 0 {
+		return c.Redirect().Route("Show Tags", fiber.RedirectConfig{
+			Queries: map[string]string{
+				"page":  "1",
+				"limit": "100",
+			},
+		})
+	}
+
+	tags, err := h.funFactService.GetTags(c, req)
+	if err != nil {
+		h.log.Error("GetTags error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Render("pages/admin/tags/index", dto.RenderData{
+		Title: "Tags",
+		Data: fiber.Map{
+			"Tags":   tags,
+			"Filter": req,
+		},
+	}.ToMap())
 }
