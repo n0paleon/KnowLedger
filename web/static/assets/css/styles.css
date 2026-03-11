@@ -3,3 +3,83 @@
     transform: translateY(-2px);
     transition: all 0.2s ease;
 }
+
+/* ===== Quill Editor ===== */
+
+/* Reset semua border bawaan Quill */
+.ql-toolbar.ql-snow {
+    border: none !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    border-radius: 0 !important;
+    background-color: #f3f4f6;
+    padding: 8px;
+}
+
+.ql-container.ql-snow {
+    border: none !important;
+    border-radius: 0 !important;
+    font-size: 0.875rem;
+    background-color: #f9fafb;
+}
+
+.ql-editor {
+    min-height: 160px;
+    color: #1f2937;
+    padding: 1rem;
+}
+
+.ql-editor.ql-blank::before {
+    color: #9ca3af;
+    font-style: normal;
+}
+
+/* Wrapper tunggal sebagai border */
+.quill-wrapper {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.quill-wrapper:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.quill-wrapper:focus-within .ql-container.ql-snow {
+    background-color: #fff;
+}
+
+/* Amber variant (halaman edit) */
+.quill-wrapper.amber:focus-within {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+/* Toolbar button hover/active — indigo */
+.ql-toolbar button:hover,
+.ql-toolbar button.ql-active {
+    color: #6366f1 !important;
+}
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar button.ql-active .ql-stroke {
+    stroke: #6366f1 !important;
+}
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button.ql-active .ql-fill {
+    fill: #6366f1 !important;
+}
+
+/* Toolbar button hover/active — amber variant */
+.quill-wrapper.amber .ql-toolbar button:hover,
+.quill-wrapper.amber .ql-toolbar button.ql-active {
+    color: #f59e0b !important;
+}
+.quill-wrapper.amber .ql-toolbar button:hover .ql-stroke,
+.quill-wrapper.amber .ql-toolbar button.ql-active .ql-stroke {
+    stroke: #f59e0b !important;
+}
+.quill-wrapper.amber .ql-toolbar button:hover .ql-fill,
+.quill-wrapper.amber .ql-toolbar button.ql-active .ql-fill {
+    fill: #f59e0b !important;
+}

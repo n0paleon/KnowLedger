@@ -1,12 +1,33 @@
 {% macro factDetailsScript() export %}
+
+<script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
+
 <script>
     (function () {
+
+        // --- Quill WYSIWYG init ---
+        const quill = new Quill('#quill-editor', {
+            theme: 'snow',
+            placeholder: 'Write something mind-blowing...',
+            modules: {
+                toolbar: [
+                    ['bold', 'italic'],
+                    ['blockquote'],
+                    [{ 'header': [1, 2, 3, false] }],
+                    [],
+                    ['clean']
+                ]
+            }
+        })
+
+        // Sync value Quill ke textarea hidden sebelum submit
+        const hiddenTextarea = document.getElementById('content')
+
         // --- Char counter ---
-        const contentArea = document.getElementById('content')
-        const charCount   = document.getElementById('charCount')
+        const charCount = document.getElementById('charCount')
 
         function updateCharCount() {
-            const len = contentArea.value.length
+            const len = quill.getText().trim().length
             charCount.textContent = `${len} chars`
             charCount.className = len > 500
                 ? 'text-xs font-mono text-red-400'
@@ -14,10 +35,31 @@
                     ? 'text-xs font-mono text-amber-400'
                     : 'text-xs font-mono text-gray-400'
         }
-        contentArea.addEventListener('input', updateCharCount)
+        quill.on('text-change', updateCharCount)
         updateCharCount()
 
-        // --- Tag preview ---
+        // --- Validasi + sync ke textarea saat submit ---
+        document.getElementById('mainForm').addEventListener('submit', function (e) {
+            const html = quill.root.innerHTML
+            const text = quill.getText().trim()
+
+            if (!text) {
+                e.preventDefault()
+                quill.focus()
+                quill.root.style.borderColor   = '#f87171'
+                quill.root.style.boxShadow     = '0 0 0 2px rgba(248,113,113,0.3)'
+                setTimeout(() => {
+                    quill.root.style.borderColor = ''
+                    quill.root.style.boxShadow   = ''
+                }, 2500)
+                return
+            }
+
+            // Simpan HTML ke textarea hidden agar ikut terkirim via POST
+            hiddenTextarea.value = html
+        })
+
+        // --- Tag preview --- (tidak berubah)
         const tagsInput  = document.getElementById('tagsInput')
         const tagPreview = document.getElementById('tagPreview')
 
@@ -35,7 +77,7 @@
         tagsInput.addEventListener('input', updateTagPreview)
         updateTagPreview()
 
-        // --- Media dropzone ---
+        // --- Media dropzone --- (tidak berubah sama sekali)
         const mediaDropzone = document.getElementById('mediaDropzone')
         if (!mediaDropzone) return
 
@@ -68,14 +110,13 @@
             const existing = document.getElementById('mediaPreview')
             if (existing) existing.remove()
 
-            const wrapper = document.createElement('div')
+            const wrapper     = document.createElement('div')
             wrapper.id        = 'mediaPreview'
             wrapper.className = 'rounded-lg overflow-hidden border border-gray-200 bg-gray-50'
 
-            const type        = file.type || ''
-            const name        = file.name || ''
-            const nameShort   = truncateChars(name, 20)
-            const sizeText    = file.size || ''
+            const type      = file.type || ''
+            const nameShort = truncateChars(file.name || '', 20)
+            const sizeText  = file.size ? formatBytes(file.size) : ''
 
             let mediaEl = ''
             if (type.startsWith('image/')) {
@@ -86,27 +127,26 @@
                 mediaEl = `<div class="p-4"><audio controls class="w-full"><source src="${url}" type="${type}"/></audio></div>`
             } else {
                 mediaEl = `
-            <div class="flex items-center gap-3 p-4">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                <div class="min-w-0">
-                    <p class="text-sm text-gray-700 font-medium">${nameShort}</p>
-                    <p class="text-xs text-gray-400">${type}</p>
-                </div>
-            </div>`
+                <div class="flex items-center gap-3 p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <div class="min-w-0">
+                        <p class="text-sm text-gray-700 font-medium">${nameShort}</p>
+                        <p class="text-xs text-gray-400">${type}</p>
+                    </div>
+                </div>`
             }
 
             wrapper.innerHTML = `
-                ${mediaEl}
-                <div class="px-3 py-2 border-t border-gray-200 bg-white flex items-center justify-between gap-2">
-                    <p class="text-xs text-gray-400">${nameShort}${sizeText ? ' · ' + sizeText : ''}</p>
-                    <a href="${url}" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700 hover:underline flex-shrink-0">Open ↗</a>
-                </div>`
+            ${mediaEl}
+            <div class="px-3 py-2 border-t border-gray-200 bg-white flex items-center justify-between gap-2">
+                <p class="text-xs text-gray-400">${nameShort}${sizeText ? ' · ' + sizeText : ''}</p>
+                <a href="${url}" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700 hover:underline flex-shrink-0">Open ↗</a>
+            </div>`
 
             fileInput.parentNode.insertBefore(wrapper, fileInput)
         }
-
 
         function removePreview() {
             const preview = document.getElementById('mediaPreview')

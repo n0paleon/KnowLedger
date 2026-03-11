@@ -3,13 +3,12 @@
 {% endmacro %}
 
 {% macro factTextarea(name, id, value, colorScheme) export %}
-<textarea
-        name="{{ name }}"
-        id="{{ id }}"
-        rows="5"
-        class="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 {% if colorScheme == 'amber' %}focus:ring-amber-400 focus:border-amber-400{% else %}focus:ring-indigo-500 focus:border-indigo-500{% endif %} focus:outline-none resize-none transition-all duration-200 text-gray-800 placeholder-gray-400 bg-gray-50 focus:bg-white"
-        placeholder="Write something mind-blowing..."
-        required>{{ value }}</textarea>
+<div class="quill-wrapper {% if colorScheme == 'amber' %}amber{% endif %}">
+    <div id="quill-editor" style="min-height: 160px;">
+        {% if value %}{{ value | safe }}{% endif %}
+    </div>
+</div>
+<textarea name="{{ name }}" id="{{ id }}" class="hidden"></textarea>
 {% endmacro %}
 
 {% macro tagsInput(value, colorScheme) export %}

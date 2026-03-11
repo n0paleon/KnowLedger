@@ -23,6 +23,9 @@ func SetupRoutes(
 	auth := app.Group("/auth")
 	public := app.Group("/")
 
+	admin.Get("/", func(c fiber.Ctx) error {
+		return c.Redirect().Route("Show Fun Facts")
+	})
 	admin.Get("/facts", adminHandler.ShowFunFacts).Name("Show Fun Facts")
 	admin.Get("/facts/create", adminHandler.ShowCreateFunFact).Name("Show Create Fun Fact")
 	admin.Post("/facts/create", adminHandler.CreateFunFact).Name("Create Fun Fact")

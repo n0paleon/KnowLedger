@@ -20,7 +20,7 @@ type Fact struct {
 	Content string     `gorm:"notnull;type:text"`
 	Status  FactStatus `gorm:"notnull;default:'draft'"`
 
-	SourceURL string `gorm:"type:text"`
+	SourceURL string `gorm:"type:text;default:'';notnull"`
 
 	Media *MediaItem `gorm:"type:jsonb;default:null"`
 
@@ -28,6 +28,11 @@ type Fact struct {
 	UpdatedAt time.Time
 
 	Tags []Tag `gorm:"many2many:fact_tags"`
+}
+
+// StripTags return Fact.Content without html tags
+func (f *Fact) StripTags() string {
+	return utils.StripHTML(f.Content)
 }
 
 func (f *Fact) BeforeCreate(tx *gorm.DB) error {

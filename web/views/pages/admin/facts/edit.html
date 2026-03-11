@@ -35,7 +35,7 @@
 
     <!-- Form Card -->
     <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-        <form action="/admin/facts/{{ Data.Fact.ID }}/edit" method="POST" class="p-8 space-y-6">
+        <form id="mainForm" action="/admin/facts/{{ Data.Fact.ID }}/edit" method="POST" class="p-8 space-y-6">
 
             <div class="space-y-2">
                 <label class="flex items-center space-x-2 text-sm font-semibold text-gray-700">
@@ -47,7 +47,7 @@
                     <span class="text-red-400 text-xs">*required</span>
                 </label>
                 {{ factTextarea("content", "content", Data.Fact.Content, "amber") }}
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center mt-2">
                     <p class="text-xs text-gray-400 italic">Tip: Be concise and accurate!</p>
                     <span id="charCount" class="text-xs text-gray-400 font-mono">0 chars</span>
                 </div>

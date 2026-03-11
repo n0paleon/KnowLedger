@@ -225,7 +225,7 @@
 
 <div class="card">
     <div class="top">
-        <span class="label">Daily Fun Fact</span>
+        <span class="label">Daily Fun Fact - KnowLedger</span>
         <span class="date">{{ Data.Fact.CreatedAt|date:"Monday, 02 January 2006" }}</span>
     </div>
 
@@ -259,7 +259,7 @@
 
     <div class="content">
         <span class="quote">"</span>
-        {{ Data.Fact.Content }}
+        {{ Data.Fact.Content | striptags }}
     </div>
 
     {% if Data.Fact.Tags %}
