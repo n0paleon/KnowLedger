@@ -68,8 +68,10 @@ func NewHttpServer(cfg *config.Config, redisClient redigo.UniversalClient) *fibe
 		staticFS := web.FS
 		staticSub, _ := fs.Sub(staticFS, "static")
 		serv.Use(static.New("", static.Config{
-			FS:     staticSub,
-			Browse: false,
+			FS:       staticSub,
+			Browse:   false,
+			Compress: true,
+			MaxAge:   3600,
 		}))
 	} else {
 		serv.Use(static.New("./web/static", static.Config{
