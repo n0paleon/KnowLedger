@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -33,5 +35,14 @@ func WithPagination(page, limit int) func(db *gorm.DB) *gorm.DB {
 			limit = fallbackLimit
 		}
 		return db.Limit(limit).Offset((page - 1) * limit)
+	}
+}
+
+func WithSearch(column, search string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if search == "" || column == "" {
+			return db
+		}
+		return db.Where(fmt.Sprintf("%s ILIKE ?", column), "%"+search+"%")
 	}
 }

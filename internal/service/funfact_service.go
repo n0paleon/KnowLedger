@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
 )
@@ -205,4 +206,20 @@ func (s *FunFactService) DeleteTag(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to delete tag: %w", err)
 	}
 	return nil
+}
+
+func (s *FunFactService) GetTagSuggestions(ctx context.Context, q string) []string {
+	limit := 10
+	tags, err := s.tagRepository.SearchTagByName(ctx, q, limit)
+	if err != nil {
+		zap.L().Error("failed to get tag suggestions", zap.String("q", q), zap.Error(err))
+		return []string{}
+	}
+
+	names := make([]string, len(tags))
+	for i, t := range tags {
+		names[i] = t.Name
+	}
+
+	return names
 }

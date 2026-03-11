@@ -111,3 +111,16 @@ func (h *AdminApiHandler) UploadMedia(c fiber.Ctx) error {
 		"size": result.SizeHumanized(),
 	})
 }
+
+func (h *AdminApiHandler) GetTagSuggestions(c fiber.Ctx) error {
+	q := c.Query("q")
+	if q == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
+			"error": "invalid tag query",
+		})
+	}
+
+	tags := h.funFactService.GetTagSuggestions(c, q)
+
+	return c.JSON(tags)
+}

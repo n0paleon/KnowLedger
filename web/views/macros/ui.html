@@ -15,6 +15,7 @@
 <input
         type="text"
         name="tags"
+        autocomplete="off"
         id="tagsInput"
         value="{{ value }}"
         placeholder="science, history, space"
@@ -38,6 +39,7 @@
         type="url"
         name="source_url"
         id="sourceUrl"
+        autocomplete="off"
         value="{{ value }}"
         placeholder="https://example.com/source"
         class="w-full p-4 border border-gray-200 rounded-lg focus:ring-2 {% if colorScheme == 'amber' %}focus:ring-amber-400 focus:border-amber-400{% else %}focus:ring-indigo-500 focus:border-indigo-500{% endif %} focus:outline-none transition-all duration-200 bg-gray-50 focus:bg-white text-gray-800 placeholder-gray-400">

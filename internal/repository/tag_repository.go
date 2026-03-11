@@ -101,3 +101,16 @@ func (r *TagRepository) GetTags(ctx context.Context, params model.ListTagsParams
 func (r *TagRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&model.Tag{}).Error
 }
+
+func (r *TagRepository) SearchTagByName(ctx context.Context, name string, limit int) ([]model.Tag, error) {
+	var tags []model.Tag
+
+	if err := r.db.WithContext(ctx).
+		Scopes(WithSearch("name", name)).
+		Limit(limit).
+		Find(&tags).Error; err != nil {
+		return nil, fmt.Errorf("failed to search tag by name %w", err)
+	}
+
+	return tags, nil
+}

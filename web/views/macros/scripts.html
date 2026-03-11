@@ -5,7 +5,6 @@
 <script>
     (function () {
 
-        // --- Quill WYSIWYG init ---
         const quill = new Quill('#quill-editor', {
             theme: 'snow',
             placeholder: 'Write something mind-blowing...',
@@ -20,10 +19,8 @@
             }
         })
 
-        // Sync value Quill ke textarea hidden sebelum submit
         const hiddenTextarea = document.getElementById('content')
 
-        // --- Char counter ---
         const charCount = document.getElementById('charCount')
 
         function updateCharCount() {
@@ -38,7 +35,6 @@
         quill.on('text-change', updateCharCount)
         updateCharCount()
 
-        // --- Validasi + sync ke textarea saat submit ---
         document.getElementById('mainForm').addEventListener('submit', function (e) {
             const html = quill.root.innerHTML
             const text = quill.getText().trim()
@@ -46,8 +42,8 @@
             if (!text) {
                 e.preventDefault()
                 quill.focus()
-                quill.root.style.borderColor   = '#f87171'
-                quill.root.style.boxShadow     = '0 0 0 2px rgba(248,113,113,0.3)'
+                quill.root.style.borderColor = '#f87171'
+                quill.root.style.boxShadow   = '0 0 0 2px rgba(248,113,113,0.3)'
                 setTimeout(() => {
                     quill.root.style.borderColor = ''
                     quill.root.style.boxShadow   = ''
@@ -55,11 +51,10 @@
                 return
             }
 
-            // Simpan HTML ke textarea hidden agar ikut terkirim via POST
             hiddenTextarea.value = html
         })
 
-        // --- Tag preview --- (tidak berubah)
+        // --- Tag preview ---
         const tagsInput  = document.getElementById('tagsInput')
         const tagPreview = document.getElementById('tagPreview')
 
@@ -77,7 +72,109 @@
         tagsInput.addEventListener('input', updateTagPreview)
         updateTagPreview()
 
-        // --- Media dropzone --- (tidak berubah sama sekali)
+        // --- Tag Autocomplete ---
+        const tagsWrapper = tagsInput.parentElement
+        let activeSuggestionIndex = -1
+
+        const dropdown = document.createElement('div')
+        dropdown.id        = 'tagDropdown'
+        dropdown.className = 'absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 hidden max-h-48 overflow-y-auto'
+        tagsWrapper.style.position = 'relative'
+        tagsWrapper.appendChild(dropdown)
+
+        function getCurrentTag() {
+            const parts = tagsInput.value.split(',')
+            return parts[parts.length - 1].trim()
+        }
+
+        function replaceCurrentTag(suggestion) {
+            const parts = tagsInput.value.split(',')
+            parts[parts.length - 1] = ' ' + suggestion
+            tagsInput.value = parts.join(',') + ', '
+            hideDropdown()
+            updateTagPreview()
+            tagsInput.focus()
+        }
+
+        function hideDropdown() {
+            dropdown.classList.add('hidden')
+            dropdown.innerHTML = ''
+            activeSuggestionIndex = -1
+        }
+
+        function renderDropdown(suggestions) {
+            dropdown.innerHTML = ''
+            if (!suggestions.length) { hideDropdown(); return }
+
+            suggestions.forEach((s) => {
+                const item = document.createElement('div')
+                item.className = 'px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-indigo-50 hover:text-indigo-600'
+                item.textContent = '#' + s
+                item.addEventListener('mousedown', (e) => {
+                    e.preventDefault()
+                    replaceCurrentTag(s)
+                })
+                dropdown.appendChild(item)
+            })
+
+            dropdown.classList.remove('hidden')
+        }
+
+        function highlightSuggestion(index) {
+            const items = dropdown.querySelectorAll('div')
+            items.forEach((el, i) => {
+                el.classList.toggle('bg-indigo-50', i === index)
+                el.classList.toggle('text-indigo-600', i === index)
+            })
+        }
+
+        let debounceTimer = null
+
+        tagsInput.addEventListener('input', () => {
+            const q = getCurrentTag()
+            clearTimeout(debounceTimer)
+            if (q.length < 1) { hideDropdown(); return }
+
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res  = await fetch(`/admin/api/tags/suggestions?q=${encodeURIComponent(q)}`)
+                    const tags = await res.json()
+                    const existing = tagsInput.value.split(',').map(t => t.trim().toLowerCase())
+                    const filtered = tags.filter(t => !existing.slice(0, -1).includes(t.toLowerCase()))
+                    renderDropdown(filtered)
+                } catch {
+                    hideDropdown()
+                }
+            }, 200)
+        })
+
+        tagsInput.addEventListener('keydown', (e) => {
+            const items = dropdown.querySelectorAll('div')
+            if (!items.length) return
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, items.length - 1)
+                highlightSuggestion(activeSuggestionIndex)
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0)
+                highlightSuggestion(activeSuggestionIndex)
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                if (activeSuggestionIndex >= 0) {
+                    e.preventDefault()
+                    replaceCurrentTag(items[activeSuggestionIndex].textContent.replace('#', ''))
+                }
+            } else if (e.key === 'Escape') {
+                hideDropdown()
+            }
+        })
+
+        tagsInput.addEventListener('blur', () => {
+            setTimeout(hideDropdown, 150)
+        })
+
+        // --- Media dropzone ---
         const mediaDropzone = document.getElementById('mediaDropzone')
         if (!mediaDropzone) return
 
@@ -139,11 +236,11 @@
             }
 
             wrapper.innerHTML = `
-            ${mediaEl}
-            <div class="px-3 py-2 border-t border-gray-200 bg-white flex items-center justify-between gap-2">
-                <p class="text-xs text-gray-400">${nameShort}${sizeText ? ' · ' + sizeText : ''}</p>
-                <a href="${url}" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700 hover:underline flex-shrink-0">Open ↗</a>
-            </div>`
+                ${mediaEl}
+                <div class="px-3 py-2 border-t border-gray-200 bg-white flex items-center justify-between gap-2">
+                    <p class="text-xs text-gray-400">${nameShort}${sizeText ? ' · ' + sizeText : ''}</p>
+                    <a href="${url}" target="_blank" class="text-xs text-indigo-500 hover:text-indigo-700 hover:underline flex-shrink-0">Open ↗</a>
+                </div>`
 
             fileInput.parentNode.insertBefore(wrapper, fileInput)
         }

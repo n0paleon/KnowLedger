@@ -115,7 +115,7 @@ func (r *FactRepository) GetFacts(ctx context.Context, params model.ListFactsPar
 
 	base := r.db.WithContext(ctx).Model(&model.Fact{}).
 		Scopes(
-			factWithSearch(params.Search),
+			WithSearch("content", params.Search),
 			factWithStatus(params.Status),
 		)
 

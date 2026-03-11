@@ -36,6 +36,7 @@ func SetupRoutes(
 	adminApi.Delete("/facts/:id", adminApiHandler.DeleteFunFact).Name("API - Delete One Fun Fact")
 	adminApi.Post("/media", adminApiHandler.UploadMedia).Name("API - Upload Media")
 	adminApi.Delete("/tags/:id", adminApiHandler.DeleteTag).Name("API - Delete One Tag")
+	adminApi.Get("/tags/suggestions", adminApiHandler.GetTagSuggestions).Name("API - Get Tag Suggestions")
 
 	public.Get("/", publicHandler.PublicShowIndex).Name("Public Index")
 
