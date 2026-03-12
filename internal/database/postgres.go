@@ -9,6 +9,8 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+var DB *gorm.DB
+
 func Connect(dsn string) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.New(postgres.Config{
 		DSN:                  dsn,
@@ -30,6 +32,8 @@ func Connect(dsn string) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(25)
 	sqlDB.SetMaxIdleConns(10)
 	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	DB = db
 
 	return db, nil
 }

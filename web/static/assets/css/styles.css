@@ -17,13 +17,14 @@
     border: none !important;
     border-radius: 0 !important;
     font-size: 0.875rem;
-    background-color: #f9fafb;
+    background-color: #fff;
 }
 
 .ql-editor {
     min-height: 160px;
     color: #1f2937;
     padding: 1rem;
+    background-color: #fff;
 }
 
 .ql-editor.ql-blank::before {

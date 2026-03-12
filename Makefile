@@ -11,24 +11,24 @@ migrate-create:
 	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
 
 migrate-up:
-	@test -n "$(DB_URL)" || (echo "DB_URL is required"; exit 1)
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" up
+	@test -n "$(DATABASE_DSN)" || (echo "DATABASE_DSN is required"; exit 1)
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_DSN)" up
 
 migrate-down:
-	@test -n "$(DB_URL)" || (echo "DB_URL is required"; exit 1)
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" down 1
+	@test -n "$(DATABASE_DSN)" || (echo "DATABASE_DSN is required"; exit 1)
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_DSN)" down 1
 
 migrate-down-all:
-	@test -n "$(DB_URL)" || (echo "DB_URL is required"; exit 1)
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" down
+	@test -n "$(DATABASE_DSN)" || (echo "DATABASE_DSN is required"; exit 1)
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_DSN)" down
 
 migrate-force:
-	@test -n "$(DB_URL)" || (echo "DB_URL is required"; exit 1)
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" force $(v)
+	@test -n "$(DATABASE_DSN)" || (echo "DATABASE_DSN is required"; exit 1)
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_DSN)" force $(v)
 
 migrate-version:
-	@test -n "$(DB_URL)" || (echo "DB_URL is required"; exit 1)
-	migrate -path $(MIGRATIONS_DIR) -database "$(DB_URL)" version
+	@test -n "$(DATABASE_DSN)" || (echo "DATABASE_DSN is required"; exit 1)
+	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_DSN)" version
 
 test-integration:
 	dotenv run go test -v ./...

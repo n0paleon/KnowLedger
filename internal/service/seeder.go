@@ -33,7 +33,7 @@ func SeedAdminIfEmpty(repo *repository.AdminRepository, cfg *config.Config) {
 		zap.L().Fatal("failed to generate password hash", zap.Error(err))
 	}
 
-	if err := repo.Create(ctx, cfg.Admin.Username, hashed); err != nil {
+	if _, err := repo.Create(ctx, cfg.Admin.Username, hashed); err != nil {
 		zap.L().Fatal("failed to create admin user", zap.Error(err))
 	}
 

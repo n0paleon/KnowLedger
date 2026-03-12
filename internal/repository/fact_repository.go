@@ -31,6 +31,7 @@ func NewFactRepository(db *gorm.DB) *FactRepository {
 
 // --- Scopes ---
 
+// TODO: this function is unused, delete immediately
 func factWithSearch(search string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		if search == "" {

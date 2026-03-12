@@ -26,6 +26,15 @@ func NewAdminRepository(db *gorm.DB) *AdminRepository {
 	}
 }
 
+func (r *AdminRepository) FindAll(ctx context.Context) ([]model.Admin, error) {
+	var admins []model.Admin
+
+	if err := r.db.WithContext(ctx).Find(&admins).Error; err != nil {
+		return nil, err
+	}
+	return admins, nil
+}
+
 func (r *AdminRepository) FindByUsername(ctx context.Context, username string) (*model.Admin, error) {
 	var admin model.Admin
 	err := r.db.WithContext(ctx).
@@ -40,10 +49,25 @@ func (r *AdminRepository) Count(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-func (r *AdminRepository) Create(ctx context.Context, username, hashedPassword string) error {
+func (r *AdminRepository) Delete(ctx context.Context, admin model.Admin) error {
+	return r.db.WithContext(ctx).Where(admin).Delete(&model.Admin{}).Error
+}
+
+func (r *AdminRepository) Create(ctx context.Context, username, hashedPassword string) (*model.Admin, error) {
+	admin := model.Admin{
+		Username: username,
+		Password: hashedPassword,
+	}
+
+	err := r.db.WithContext(ctx).
+		Create(&admin).Error
+
+	return &admin, err
+}
+
+func (r *AdminRepository) UpdatePassword(ctx context.Context, username, newPassword string) error {
 	return r.db.WithContext(ctx).
-		Create(&model.Admin{
-			Username: username,
-			Password: hashedPassword,
-		}).Error
+		Model(&model.Admin{}).
+		Where("username = ?", username).
+		Update("password", newPassword).Error
 }
