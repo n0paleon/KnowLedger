@@ -1,3 +1,18 @@
+const menuToggle = document.getElementById('menuToggle');
+const mobileMenu = document.getElementById('mobileMenu');
+const iconOpen   = document.getElementById('iconOpen');
+const iconClose  = document.getElementById('iconClose');
+
+menuToggle.addEventListener('click', () => {
+    const isOpen = mobileMenu.style.display === 'flex';
+
+    mobileMenu.style.display = isOpen ? 'none' : 'flex';
+    mobileMenu.style.flexDirection = 'column';
+
+    iconOpen.classList.toggle('hidden', !isOpen);
+    iconClose.classList.toggle('hidden', isOpen);
+});
+
 async function deleteFact(id) {
     const result = await Swal.fire({
         title: 'Are you sure?',

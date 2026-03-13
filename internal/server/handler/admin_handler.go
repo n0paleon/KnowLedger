@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"KnowLedger/internal/server/helper"
 	"KnowLedger/internal/service"
 	"KnowLedger/pkg/dto"
 
@@ -10,12 +11,14 @@ import (
 
 type AdminHandler struct {
 	funFactService *service.FunFactService
+	profileService *service.ProfileService
 	log            *zap.Logger
 }
 
-func NewAdminHandler(funFactService *service.FunFactService, logger *zap.Logger) *AdminHandler {
+func NewAdminHandler(funFactService *service.FunFactService, profileService *service.ProfileService, logger *zap.Logger) *AdminHandler {
 	return &AdminHandler{
 		funFactService: funFactService,
+		profileService: profileService,
 		log:            logger,
 	}
 }
@@ -194,5 +197,25 @@ func (h *AdminHandler) ShowTags(c fiber.Ctx) error {
 			"Tags":   tags,
 			"Filter": req,
 		},
+	}.ToMap())
+}
+
+func (h *AdminHandler) ShowProfile(c fiber.Ctx) error {
+	userID := helper.GetUserID(c)
+	if userID == "" {
+		return c.Redirect().Route("Admin Logout")
+	}
+
+	profile, err := h.profileService.GetProfileDetails(c, userID)
+	if err != nil {
+		h.log.Error("GetProfileDetails error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Render("pages/admin/profile", dto.RenderData{
+		Title: "Profile",
+		Data:  profile,
 	}.ToMap())
 }

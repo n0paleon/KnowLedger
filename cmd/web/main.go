@@ -77,6 +77,7 @@ func main() {
 					Interval:       time.Duration(cfg.GC.IntervalSeconds) * time.Second,
 				})
 			},
+			service.NewProfileService,
 
 			// Handlers
 			handler.NewAdminHandler,

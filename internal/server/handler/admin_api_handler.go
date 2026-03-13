@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"KnowLedger/internal/server/helper"
 	"KnowLedger/internal/service"
+	"KnowLedger/pkg/dto"
 	"io"
 
 	"github.com/gofiber/fiber/v3"
@@ -11,15 +13,17 @@ import (
 type AdminApiHandler struct {
 	funFactService *service.FunFactService
 	mediaService   *service.MediaService
+	profileService *service.ProfileService
 	log            *zap.Logger
 }
 
 const MaxFileUpload = 5 * 1024 * 1024 // 5MB
 
-func NewAdminApiHandler(fs *service.FunFactService, ms *service.MediaService, logger *zap.Logger) *AdminApiHandler {
+func NewAdminApiHandler(fs *service.FunFactService, ms *service.MediaService, ps *service.ProfileService, logger *zap.Logger) *AdminApiHandler {
 	return &AdminApiHandler{
 		funFactService: fs,
 		mediaService:   ms,
+		profileService: ps,
 		log:            logger,
 	}
 }
@@ -123,4 +127,51 @@ func (h *AdminApiHandler) GetTagSuggestions(c fiber.Ctx) error {
 	tags := h.funFactService.GetTagSuggestions(c, q)
 
 	return c.JSON(tags)
+}
+
+func (h *AdminApiHandler) ResetApiKey(c fiber.Ctx) error {
+	userID := helper.GetUserID(c)
+	if userID == "" {
+		return c.Redirect().Route("Admin Logout")
+	}
+
+	newApiKey, err := h.profileService.ResetApiKey(c, userID)
+	if err != nil {
+		h.log.Error("ResetApiKey error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(&fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	h.log.Info("ResetApiKey success", zap.String("user_id", userID), zap.String("new_api_key", newApiKey))
+
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"api_key": newApiKey,
+	})
+}
+
+func (h *AdminApiHandler) ChangePassword(c fiber.Ctx) error {
+	userID := helper.GetUserID(c)
+	if userID == "" {
+		return c.Redirect().Route("Admin Logout")
+	}
+
+	req := new(dto.PostChangePasswordRequest)
+
+	if err := c.Bind().JSON(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if err := h.profileService.ChangePassword(c, userID, req.Password, req.ConfirmPassword); err != nil {
+		h.log.Error("ChangePassword error", zap.Error(err))
+		return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"success": true,
+	})
 }

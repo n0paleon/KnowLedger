@@ -36,6 +36,8 @@ var adminListCmd = &cobra.Command{
 
 		spinner.Success("Found all admins")
 		helper.PrintAdmins(admins)
+		pterm.Println()
+
 		return nil
 	},
 }
@@ -61,6 +63,7 @@ var adminCreateCmd = &cobra.Command{
 
 		spinner.Success("Created new admin account")
 		helper.PrintAdmins([]model.Admin{*admin})
+		pterm.Println()
 
 		return nil
 	},
@@ -99,6 +102,8 @@ var adminDeleteCmd = &cobra.Command{
 		}
 
 		spinner.Success("Admin account deleted successfully")
+		pterm.Println()
+
 		return nil
 	},
 }
@@ -133,13 +138,15 @@ var adminUpdatePasswordCmd = &cobra.Command{
 		}
 
 		hashedPassword, _ := utils.GeneratePasswordHash(newPassword)
-		err = app.AdminRepo.UpdatePassword(context.Background(), usernameInput, hashedPassword)
+		err = app.AdminRepo.UpdatePasswordByUsername(context.Background(), usernameInput, hashedPassword)
 		if err != nil {
 			spinner.Fail("Failed to update admin password")
 			return err
 		}
 
 		spinner.Success("Admin account updated successfully")
+		pterm.Println()
+
 		return nil
 	},
 }
@@ -172,7 +179,7 @@ var adminResetPasswordCmd = &cobra.Command{
 		pterm.Println()
 
 		hashedPassword, _ := utils.GeneratePasswordHash(newPassword)
-		err = app.AdminRepo.UpdatePassword(context.Background(), usernameInput, hashedPassword)
+		err = app.AdminRepo.UpdatePasswordByUsername(context.Background(), usernameInput, hashedPassword)
 		if err != nil {
 			spinner.Fail("Failed to update admin password")
 			return err
@@ -183,6 +190,8 @@ var adminResetPasswordCmd = &cobra.Command{
 		pterm.Println()
 
 		spinner.Success("Admin account updated successfully")
+		pterm.Println()
+
 		return nil
 	},
 }

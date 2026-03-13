@@ -42,6 +42,13 @@ func (r *AdminRepository) FindByUsername(ctx context.Context, username string) (
 	return &admin, err
 }
 
+func (r *AdminRepository) FindByID(ctx context.Context, id string) (*model.Admin, error) {
+	var admin model.Admin
+	err := r.db.WithContext(ctx).
+		Where("id = ?", id).First(&admin).Error
+	return &admin, err
+}
+
 func (r *AdminRepository) Count(ctx context.Context) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
@@ -65,9 +72,23 @@ func (r *AdminRepository) Create(ctx context.Context, username, hashedPassword s
 	return &admin, err
 }
 
-func (r *AdminRepository) UpdatePassword(ctx context.Context, username, newPassword string) error {
+func (r *AdminRepository) UpdatePasswordByUsername(ctx context.Context, username, newPassword string) error {
 	return r.db.WithContext(ctx).
 		Model(&model.Admin{}).
 		Where("username = ?", username).
 		Update("password", newPassword).Error
+}
+
+func (r *AdminRepository) UpdatePasswordByUserID(ctx context.Context, userID, newPassword string) error {
+	return r.db.WithContext(ctx).
+		Model(&model.Admin{}).
+		Where("id = ?", userID).
+		Update("password", newPassword).Error
+}
+
+func (r *AdminRepository) UpdateApiKeyByUserID(ctx context.Context, userID, newApiKey string) error {
+	return r.db.WithContext(ctx).
+		Model(&model.Admin{}).
+		Where("id = ?", userID).
+		Update("api_key", newApiKey).Error
 }

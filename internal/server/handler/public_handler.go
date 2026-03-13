@@ -29,6 +29,8 @@ func (h *PublicHandler) PublicShowIndex(c fiber.Ctx) error {
 		})
 	}
 
+	//return c.JSON(fact)
+
 	return c.Render("pages/index", dto.RenderData{
 		Title: "Daily Fun Fact | KnowLedger",
 		Data: fiber.Map{

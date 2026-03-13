@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 	Short: "KnowLedger Admin CLI",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := godotenv.Load(envFile); err != nil {
-			return fmt.Errorf("gagal load env file '%s': %w", envFile, err)
+			return fmt.Errorf("failed to load env file '%s': %w", envFile, err)
 		}
 
 		db, err := database.Connect(os.Getenv("DATABASE_DSN"))
