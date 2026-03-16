@@ -29,8 +29,9 @@ type ListFactsParams struct {
 }
 
 type ListTagsParams struct {
-	Page  int `query:"page" validate:"numeric,gte=0"`
-	Limit int `query:"limit" validate:"numeric,gte=0,lte=250"`
+	Page      int    `query:"page" validate:"numeric,gte=0"`
+	Limit     int    `query:"limit" validate:"numeric,gte=0,lte=500"`
+	SortOrder string `query:"sortOrder" validate:"omitempty,oneof=asc desc"`
 }
 
 type PostChangePasswordRequest struct {

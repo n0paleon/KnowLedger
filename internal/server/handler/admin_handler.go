@@ -177,8 +177,9 @@ func (h *AdminHandler) ShowTags(c fiber.Ctx) error {
 	if page == 0 || limit == 0 {
 		return c.Redirect().Route("Show Tags", fiber.RedirectConfig{
 			Queries: map[string]string{
-				"page":  "1",
-				"limit": "100",
+				"page":      "1",
+				"limit":     "100",
+				"sortOrder": "desc",
 			},
 		})
 	}

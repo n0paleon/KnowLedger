@@ -25,7 +25,7 @@ func WithPagination(page, limit int) func(db *gorm.DB) *gorm.DB {
 		if page <= 0 {
 			page = 1
 		}
-		hardLimit := 300
+		hardLimit := 500
 		fallbackLimit := 20
 		if limit <= 0 || limit > hardLimit {
 			zap.L().Warn("pagination limit out of range, falling back to default",

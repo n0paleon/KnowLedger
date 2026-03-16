@@ -324,8 +324,9 @@ func (s *FunFactService) UpdateFunFact(ctx context.Context, id string, request *
 
 func (s *FunFactService) GetTags(ctx context.Context, params *dto.ListTagsParams) (*model.Paginated[*model.Tag], error) {
 	tags, err := s.tagRepository.GetTags(ctx, model.ListTagsParams{
-		Page:  params.Page,
-		Limit: params.Limit,
+		Page:      params.Page,
+		Limit:     params.Limit,
+		SortOrder: params.SortOrder,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tags: %w", err)
