@@ -69,7 +69,18 @@ func factWithSort(sortBy, sortDir string) func(db *gorm.DB) *gorm.DB {
 // --- Repository Methods
 
 func (r *FactRepository) Create(ctx context.Context, fact *model.Fact) error {
-	return r.db.WithContext(ctx).Create(fact).Error
+	return r.db.WithContext(ctx).
+		Omit("Tags.*").
+		Create(fact).Error
+}
+
+func (r *FactRepository) CreateBulk(ctx context.Context, facts []model.Fact) error {
+	if len(facts) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).
+		Omit("Tags.*").
+		Create(&facts).Error
 }
 
 func (r *FactRepository) FindByID(ctx context.Context, id string) (*model.Fact, error) {

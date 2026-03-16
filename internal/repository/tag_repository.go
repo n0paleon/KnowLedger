@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type TagRepository struct {
@@ -113,4 +114,20 @@ func (r *TagRepository) SearchTagByName(ctx context.Context, name string, limit 
 	}
 
 	return tags, nil
+}
+
+func (r *TagRepository) CreateBulkIgnoreConflict(ctx context.Context, tags *[]model.Tag) error {
+	if len(*tags) == 0 {
+		return nil
+	}
+
+	result := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{DoNothing: true}).
+		Create(tags)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to bulk create tags (ignore conflict): %w", result.Error)
+	}
+
+	return nil
 }

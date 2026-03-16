@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"fmt"
 
 	"go.uber.org/zap"
@@ -45,4 +46,14 @@ func WithSearch(column, search string) func(db *gorm.DB) *gorm.DB {
 		}
 		return db.Where(fmt.Sprintf("%s ILIKE ?", column), "%"+search+"%")
 	}
+}
+
+func InsertInBatches[T any](ctx context.Context, items []T, batchSize int, fn func(batch []T) error) error {
+	for i := 0; i < len(items); i += batchSize {
+		end := min(i+batchSize, len(items))
+		if err := fn(items[i:end]); err != nil {
+			return err
+		}
+	}
+	return nil
 }

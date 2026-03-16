@@ -9,8 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
-	"sync/atomic"
 
 	"gorm.io/gorm"
 )
@@ -45,42 +43,20 @@ func (s *InternalApiService) SaveMedia(ctx context.Context, data []byte) (*model
 	return s.mediaService.SaveMedia(ctx, data)
 }
 
-func (s *InternalApiService) CreateFunFact(ctx context.Context, facts []*dto.CreateFunFactAPIRequest) (int, error) {
-	errCh := make(chan error, len(facts))
-	var wg sync.WaitGroup
-	var successCount atomic.Int32
+func (s *InternalApiService) CreateFunFacts(ctx context.Context, facts []*dto.CreateFunFactAPIRequest) (failed int, errors error) {
+	reqs := make([]*dto.PostCreateFunFactRequest, 0, len(facts))
 
-	for _, fact := range facts {
-		fact := fact
-		wg.Add(1)
-		_ = s.pool.Submit(func() {
-			defer wg.Done()
-
-			tags := strings.Join(fact.Tags, ",")
-			req := &dto.PostCreateFunFactRequest{
-				Content:   fact.Content,
-				Tags:      tags,
-				Status:    model.FactStatusDraft,
-				SourceURL: fact.SourceURL,
-				MediaKey:  fact.MediaKey,
-			}
-			if err := s.funFactService.CreateFact(ctx, req); err != nil {
-				errCh <- fmt.Errorf("failed to create fact (content: %.30q): %w", fact.Content, err)
-				return
-			}
-			successCount.Add(1)
+	for _, f := range facts {
+		// TODO: add data filters here to minimize failed queries that are not tracked due to query batching
+		reqs = append(reqs, &dto.PostCreateFunFactRequest{
+			Content:   f.Content,
+			Tags:      strings.Join(f.Tags, ","),
+			Status:    model.FactStatusDraft,
+			SourceURL: f.SourceURL,
+			MediaKey:  f.MediaKey,
 		})
 	}
-
-	wg.Wait()
-	close(errCh)
-
-	var multiErr error
-	for err := range errCh {
-		multiErr = errors.Join(multiErr, err)
-	}
-
-	return int(successCount.Load()), multiErr
+	return s.funFactService.CreateFactBulk(ctx, reqs)
 }
 
 func (s *InternalApiService) ValidateApiKey(ctx context.Context, userID, apiKey string) error {
