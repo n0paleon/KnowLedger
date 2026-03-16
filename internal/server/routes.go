@@ -13,6 +13,7 @@ func SetupRoutes(
 	adminApiHandler *handler.AdminApiHandler,
 	publicHandler *handler.PublicHandler,
 	authHandler *handler.AuthHandler,
+	internalApiHandler *handler.InternalAPIHandler,
 ) {
 	admin := app.Group("/admin")
 	admin.Use(middleware.RequireAuth)
@@ -22,6 +23,8 @@ func SetupRoutes(
 
 	auth := app.Group("/auth")
 	public := app.Group("/")
+	internalApi := app.Group("/internal/api")
+	internalApi.Use(internalApiHandler.AuthMiddleware)
 
 	admin.Get("/", func(c fiber.Ctx) error {
 		return c.Redirect().Route("Show Fun Facts")
@@ -46,4 +49,7 @@ func SetupRoutes(
 	auth.Get("/admin", authHandler.ShowLogin).Name("Show Admin Login")
 	auth.Post("/admin", authHandler.Login).Name("Admin Login")
 	auth.Get("/logout", authHandler.Logout).Name("Admin Logout")
+
+	internalApi.Post("/upload-media", internalApiHandler.UploadMedia).Name("Internal API - Upload Media")
+	internalApi.Post("/facts/create", internalApiHandler.CreateFunFact).Name("Internal API - Create Fun Facts")
 }

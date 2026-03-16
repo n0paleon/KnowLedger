@@ -78,12 +78,14 @@ func main() {
 				})
 			},
 			service.NewProfileService,
+			service.NewInternalApiService,
 
 			// Handlers
 			handler.NewAdminHandler,
 			handler.NewAdminApiHandler,
 			handler.NewPublicHandler,
 			handler.NewAuthHandler,
+			handler.NewInternalAPIHandler,
 
 			// Server
 			server.NewHttpServer,
@@ -103,13 +105,21 @@ func registerHooks(
 	adminApiHandler *handler.AdminApiHandler,
 	publicHandler *handler.PublicHandler,
 	authHandler *handler.AuthHandler,
+	internalApiHandler *handler.InternalAPIHandler,
 	pool *workerpool.Pool,
 	db *gorm.DB,
 	gcService *service.GCService,
 	adminRepo *repository.AdminRepository,
 	redisClient redis.UniversalClient,
 ) {
-	server.SetupRoutes(serv, adminHandler, adminApiHandler, publicHandler, authHandler)
+	server.SetupRoutes(
+		serv,
+		adminHandler,
+		adminApiHandler,
+		publicHandler,
+		authHandler,
+		internalApiHandler,
+	)
 
 	stopMonitor := make(chan struct{})
 
