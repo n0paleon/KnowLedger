@@ -9,10 +9,21 @@
     <div class="flex items-center gap-2">
         <select name="limit" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
             <option value="100" {% if Data.Filter.Limit == 100 or not Data.Filter.Limit %}selected{% endif %}>100 / page</option>
-            <option value="150" {% if Data.Filter.Limit == 150 %}selected{% endif %}>150 / page</option>
             <option value="200" {% if Data.Filter.Limit == 200 %}selected{% endif %}>200 / page</option>
-            <option value="250" {% if Data.Filter.Limit == 250 %}selected{% endif %}>250 / page</option>
+            <option value="300" {% if Data.Filter.Limit == 300 %}selected{% endif %}>300 / page</option>
+            <option value="500" {% if Data.Filter.Limit == 500 %}selected{% endif %}>500 / page</option>
         </select>
+
+        <!-- Sort Order -->
+        <select name="sortOrder" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+            <option value="desc" {% if Data.Filter.SortOrder == "desc" or not Data.Filter.SortOrder %}selected{% endif %}>
+            Most Facts
+            </option>
+            <option value="asc" {% if Data.Filter.SortOrder == "asc" %}selected{% endif %}>
+            Least Facts
+            </option>
+        </select>
+
         <div class="hidden sm:block w-px h-6 bg-gray-300 mx-1"></div>
         <div class="flex items-center gap-2 ml-auto">
             <a href="?" class="text-sm font-medium text-gray-500 bg-white border border-gray-200 px-4 py-2 min-w-[72px] text-center rounded-lg hover:bg-gray-100 transition-all">

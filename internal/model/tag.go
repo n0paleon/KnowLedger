@@ -30,6 +30,7 @@ func (t *Tag) BeforeUpdate(tx *gorm.DB) error {
 }
 
 type ListTagsParams struct {
-	Page  int
-	Limit int
+	Page      int
+	Limit     int
+	SortOrder string
 }

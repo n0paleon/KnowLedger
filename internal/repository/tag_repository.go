@@ -4,6 +4,7 @@ import (
 	"KnowLedger/internal/model"
 	"context"
 	"fmt"
+	"strings"
 
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
@@ -66,6 +67,11 @@ func (r *TagRepository) GetTags(ctx context.Context, params model.ListTagsParams
 		total int64
 	)
 
+	sortOrder := "DESC"
+	if strings.ToLower(params.SortOrder) == "asc" {
+		sortOrder = "ASC"
+	}
+
 	base := r.db.WithContext(ctx).Model(&model.Tag{})
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -84,7 +90,7 @@ func (r *TagRepository) GetTags(ctx context.Context, params model.ListTagsParams
 			Select("tags.*, COUNT(fact_tags.fact_id) AS total_facts").
 			Joins("LEFT JOIN fact_tags ON fact_tags.tag_id = tags.id").
 			Group("tags.id").
-			Order("tags.id ASC").
+			Order("total_facts " + sortOrder).
 			Scopes(WithPagination(params.Page, params.Limit)).
 			Find(&tags).Error; err != nil {
 			return fmt.Errorf("failed to get tags: %w", err)
