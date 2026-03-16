@@ -92,3 +92,11 @@ func (r *AdminRepository) UpdateApiKeyByUserID(ctx context.Context, userID, newA
 		Where("id = ?", userID).
 		Update("api_key", newApiKey).Error
 }
+
+func (r *AdminRepository) FindApiKey(ctx context.Context, key string) (*model.Admin, error) {
+	var admin model.Admin
+	err := r.db.WithContext(ctx).
+		Where("api_key = ?", key).
+		First(&admin).Error
+	return &admin, err
+}
