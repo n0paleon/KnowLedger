@@ -6,6 +6,7 @@ import (
 	"KnowLedger/pkg/dto"
 	"KnowLedger/pkg/utils"
 	"context"
+	"errors"
 	"fmt"
 
 	"go.uber.org/zap"
@@ -67,22 +68,30 @@ func (s *FunFactService) CreateFact(ctx context.Context, fact *dto.PostCreateFun
 		}
 
 		var finalTags []model.Tag
+		var newTagNames []string
 		var newTags []model.Tag
 
 		for _, name := range tagNames {
 			if tag, found := existingTagsMap[name]; found {
 				finalTags = append(finalTags, tag)
 			} else {
-				newTag := model.Tag{Name: name}
-				newTags = append(newTags, newTag)
+				newTags = append(newTags, model.Tag{Name: name})
+				newTagNames = append(newTagNames, name)
 			}
 		}
 
 		if len(newTags) > 0 {
-			if err := tagRepo.CreateBulk(ctx, &newTags); err != nil {
+			if err := tagRepo.CreateBulkIgnoreConflict(ctx, &newTags); err != nil {
 				return fmt.Errorf("failed to create new tags: %w", err)
 			}
-			finalTags = append(finalTags, newTags...)
+
+			insertedTags, err := tagRepo.FindTagsByNames(ctx, newTagNames)
+			if err != nil {
+				return fmt.Errorf("failed to re-fetch tags after upsert: %w", err)
+			}
+			for _, t := range insertedTags {
+				finalTags = append(finalTags, *t)
+			}
 		}
 
 		newFact := model.Fact{
@@ -100,6 +109,129 @@ func (s *FunFactService) CreateFact(ctx context.Context, fact *dto.PostCreateFun
 		return fmt.Errorf("failed to create fact: %w", err)
 	}
 	return nil
+}
+
+const tagBatchSize = 200
+const factBatchSize = 150
+
+// CreateFactBulk adds fact data in bulk with incremental batch queries.
+func (s *FunFactService) CreateFactBulk(ctx context.Context, facts []*dto.PostCreateFunFactRequest) (failed int, err error) {
+	if len(facts) == 0 {
+		return 0, nil
+	}
+
+	tagNameSet := make(map[string]struct{})
+	for _, f := range facts {
+		for _, name := range utils.FormatTagsStrToSlice(f.Tags) {
+			tagNameSet[name] = struct{}{}
+		}
+	}
+	allTagNames := make([]string, 0, len(tagNameSet))
+	for name := range tagNameSet {
+		allTagNames = append(allTagNames, name)
+	}
+
+	var failCount int
+	var batchErrs error
+
+	txErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		factRepo := s.factRepository.WithTx(tx)
+		tagRepo := s.tagRepository.WithTx(tx)
+
+		existingTags, err := tagRepo.FindTagsByNames(ctx, allTagNames)
+		if err != nil {
+			return fmt.Errorf("failed to fetch existing tags: %w", err)
+		}
+
+		tagMap := make(map[string]model.Tag, len(existingTags))
+		for _, t := range existingTags {
+			tagMap[t.Name] = *t
+		}
+
+		var newTags []model.Tag
+		for _, name := range allTagNames {
+			if _, exists := tagMap[name]; !exists {
+				newTags = append(newTags, model.Tag{Name: name})
+			}
+		}
+
+		if len(newTags) > 0 {
+			if err := repository.InsertInBatches(ctx, newTags, tagBatchSize, func(batch []model.Tag) error {
+				return tagRepo.CreateBulkIgnoreConflict(ctx, &batch)
+			}); err != nil {
+				return fmt.Errorf("failed to upsert new tags: %w", err)
+			}
+
+			newTagNames := make([]string, len(newTags))
+			for i, t := range newTags {
+				newTagNames[i] = t.Name
+			}
+			insertedTags, err := tagRepo.FindTagsByNames(ctx, newTagNames)
+			if err != nil {
+				return fmt.Errorf("failed to re-fetch new tags: %w", err)
+			}
+			for _, t := range insertedTags {
+				tagMap[t.Name] = *t
+			}
+		}
+
+		var newFacts []model.Fact
+		for _, f := range facts {
+			var media *model.MediaItem
+			if f.MediaKey != "" {
+				m, err := s.mediaService.GetMediaDetails(ctx, f.MediaKey)
+				if err != nil {
+					failCount++
+					batchErrs = errors.Join(batchErrs, fmt.Errorf(
+						"skipped fact (content: %.30q): invalid media key: %w",
+						f.Content, err,
+					))
+					continue
+				}
+				media = m
+			}
+
+			tagNames := utils.FormatTagsStrToSlice(f.Tags)
+			factTags := make([]model.Tag, 0, len(tagNames))
+			for _, name := range tagNames {
+				if tag, ok := tagMap[name]; ok {
+					factTags = append(factTags, tag)
+				}
+			}
+
+			newFacts = append(newFacts, model.Fact{
+				Content:   f.Content,
+				Status:    model.FactStatusDraft,
+				SourceURL: f.SourceURL,
+				Tags:      factTags,
+				Media:     media,
+			})
+		}
+
+		batchStart := 0
+		if err := repository.InsertInBatches(ctx, newFacts, factBatchSize, func(batch []model.Fact) error {
+			if err := factRepo.CreateBulk(ctx, batch); err != nil {
+				failCount += len(batch)
+				batchErrs = errors.Join(batchErrs, fmt.Errorf(
+					"batch [%d..%d] failed: %w",
+					batchStart, batchStart+len(batch)-1, err,
+				))
+			}
+			batchStart += len(batch)
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		// if the process reaches this part, it means there is a very fatal error.
+		return len(facts), fmt.Errorf("transaction failed: %w", txErr)
+	}
+
+	return failCount, batchErrs
 }
 
 func (s *FunFactService) GetFunFactStats(ctx context.Context) (*model.FunFactStats, error) {

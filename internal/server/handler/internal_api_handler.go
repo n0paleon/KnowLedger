@@ -77,13 +77,13 @@ func (h *InternalAPIHandler) CreateFunFact(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(response)
 	}
 
-	total, err := h.apiService.CreateFunFact(c, req)
+	failed, err := h.apiService.CreateFunFacts(c, req)
 	if err != nil {
 		h.log.Error("CreateFunFact error", zap.Error(err))
 		response.Error = err.Error()
 	}
 	response.Data = fiber.Map{
-		"total": total,
+		"failed_batches": failed,
 	}
 
 	return c.Status(fiber.StatusOK).JSON(response)
