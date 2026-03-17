@@ -14,7 +14,7 @@ RUN case "$TARGETARCH" in \
     chmod +x /usr/local/bin/tailwindcss
 
 # Stage 2: Build
-FROM golang:1.24.1 AS builder
+FROM golang:1.26.1 AS builder
 
 WORKDIR /app
 
