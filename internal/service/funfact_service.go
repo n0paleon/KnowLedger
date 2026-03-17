@@ -300,9 +300,10 @@ func (s *FunFactService) GetFacts(ctx context.Context, params *dto.ListFactsPara
 
 func (s *FunFactService) UpdateFunFact(ctx context.Context, id string, request *dto.PostEditFunFactRequest) (*model.Fact, error) {
 	updatedFact := &model.Fact{
-		Content:   request.Content,
-		Status:    request.Status,
-		SourceURL: request.SourceURL,
+		Content:     request.Content,
+		Status:      request.Status,
+		SourceURL:   request.SourceURL,
+		ContentHash: utils.NormalizeAndHash(request.Content),
 	}
 	tags := utils.FormatTagsStrToSlice(request.Tags)
 
