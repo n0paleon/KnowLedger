@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -53,4 +54,11 @@ func GeneratePasswordHash(password string) (string, error) {
 func CheckPasswordHash(hash, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
+}
+
+func NormalizeAndHash(content string) string {
+	plain := StripHTML(content)
+	plain = strings.ToLower(strings.TrimSpace(plain))
+	h := sha256.Sum256([]byte(plain))
+	return hex.EncodeToString(h[:])
 }

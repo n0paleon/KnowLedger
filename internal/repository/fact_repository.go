@@ -168,10 +168,11 @@ func (r *FactRepository) Update(
 		}
 
 		updates := map[string]interface{}{
-			"content":    updatedFact.Content,
-			"status":     updatedFact.Status,
-			"source_url": updatedFact.SourceURL,
-			"media":      updatedFact.Media,
+			"content":      updatedFact.Content,
+			"status":       updatedFact.Status,
+			"source_url":   updatedFact.SourceURL,
+			"media":        updatedFact.Media,
+			"content_hash": updatedFact.ContentHash,
 		}
 		if err := tx.Model(&model.Fact{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return fmt.Errorf("failed to update fact: %w", err)
@@ -255,4 +256,27 @@ func (r *FactRepository) ScanMediaKeys(ctx context.Context, onKey func(key strin
 		})
 
 	return result.Error
+}
+
+func (r *FactRepository) FindByStatus(ctx context.Context, status model.FactStatus) ([]*model.Fact, error) {
+	var fact []*model.Fact
+	err := r.db.WithContext(ctx).
+		Preload("Tags").
+		Find(&fact, "status = ?", status).Error
+	return fact, err
+}
+
+func (r *FactRepository) BulkDelete(ctx context.Context, ids []string) error {
+	err := r.db.WithContext(ctx).
+		Where("id IN (?)", ids).
+		Delete(&model.Fact{}).Error
+	return err
+}
+
+func (r *FactRepository) FindAll(ctx context.Context) ([]*model.Fact, error) {
+	var fact []*model.Fact
+	err := r.db.WithContext(ctx).
+		Preload("Tags").
+		Find(&fact).Error
+	return fact, err
 }

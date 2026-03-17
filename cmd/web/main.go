@@ -70,11 +70,12 @@ func main() {
 			service.NewFactService,
 			func(factRepo *repository.FactRepository, storage storage.FileStorage, pool *workerpool.Pool, log *zap.Logger, cfg *config.Config) *service.GCService {
 				return service.NewGCService(service.GCServiceConfig{
-					FactRepository: factRepo,
-					Storage:        storage,
-					Pool:           pool,
-					Log:            log,
-					Interval:       time.Duration(cfg.GC.IntervalSeconds) * time.Second,
+					FactRepository:      factRepo,
+					Storage:             storage,
+					Pool:                pool,
+					Log:                 log,
+					Interval:            time.Duration(cfg.GC.IntervalSeconds) * time.Second,
+					SimilarityThreshold: cfg.GC.ContentSimilarityThreshold,
 				})
 			},
 			service.NewProfileService,

@@ -61,7 +61,8 @@ type WorkerConfig struct {
 }
 
 type GCConfig struct {
-	IntervalSeconds int `mapstructure:"interval_seconds"`
+	IntervalSeconds            int     `mapstructure:"interval_seconds"`
+	ContentSimilarityThreshold float64 `mapstructure:"content_similarity_threshold"`
 }
 
 type AdminConfig struct {
@@ -89,6 +90,8 @@ func LoadConfig(filename string) (*Config, error) {
 	cfg.SetDefault("gc.interval_seconds", 60)
 
 	cfg.SetDefault("redis.addr", "localhost:6379")
+
+	cfg.SetDefault("content_similarity_threshold", 0.85)
 
 	bindEnvs(cfg, Config{})
 

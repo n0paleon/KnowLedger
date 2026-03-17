@@ -27,6 +27,8 @@ type Fact struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
+	ContentHash string `gorm:"type:varchar;default:'';notnull;index:idx_facts_content_hash,unique"`
+
 	Tags []Tag `gorm:"many2many:fact_tags"`
 }
 
@@ -35,12 +37,22 @@ func (f *Fact) StripTags() string {
 	return utils.StripHTML(f.Content)
 }
 
+func (f *Fact) NormalizedContent() string {
+	return strings.TrimSpace(strings.ToLower(f.StripTags()))
+}
+
 func (f *Fact) BeforeCreate(tx *gorm.DB) error {
 	if f.ID == "" {
 		f.ID = utils.GenerateRandomULID()
 	}
 	f.Content = strings.TrimSpace(f.Content)
+	f.ContentHash = utils.NormalizeAndHash(f.Content)
 
+	return nil
+}
+
+func (f *Fact) BeforeUpdate(tx *gorm.DB) error {
+	f.ContentHash = utils.NormalizeAndHash(f.Content)
 	return nil
 }
 
