@@ -2,12 +2,19 @@
 FROM alpine:latest AS tw-builder
 
 ARG TAILWIND_VERSION=v4.2.1
-RUN wget -qO /usr/local/bin/tailwindcss \
-    https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64 \
-    && chmod +x /usr/local/bin/tailwindcss
+ARG TARGETARCH
+
+RUN case "$TARGETARCH" in \
+      amd64) TW_ARCH="x64" ;; \
+      arm64) TW_ARCH="arm64" ;; \
+      *) echo "Unsupported arch: $TARGETARCH" && exit 1 ;; \
+    esac && \
+    wget -qO /usr/local/bin/tailwindcss \
+      "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-${TW_ARCH}" && \
+    chmod +x /usr/local/bin/tailwindcss
 
 # Stage 2: Build
-FROM golang:1.26.1 AS builder
+FROM golang:1.24.1 AS builder
 
 WORKDIR /app
 
