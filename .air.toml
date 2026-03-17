@@ -3,10 +3,8 @@ tmp_dir = "tmp"
 [build]
 cmd = "go build -o ./tmp/web cmd/web/main.go"
 bin = "./tmp/web"
-delay = 10000 # ms
+delay = 1000 # ms
 exclude_dir = ["assets", "tmp", "vendor"]
 include_ext = ["go", "tpl", "tmpl", "json", "env"]
 exclude_regex = ["_test\\.go"]
 kill_signal = "SIGTERM"
-send_interrupt = true
-stop_on_root_change = true

@@ -126,7 +126,8 @@ func (h *AdminHandler) ShowEditFunFact(c fiber.Ctx) error {
 	return c.Render("pages/admin/facts/edit", dto.RenderData{
 		Title: "Edit Fun Fact",
 		Data: fiber.Map{
-			"Fact": fact,
+			"success": true,
+			"Fact":    fact,
 		},
 	}.ToMap())
 }
