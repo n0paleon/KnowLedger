@@ -30,8 +30,9 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - name: Prepare platform pair
+      - name: Lowercase image name & prepare platform pair
         run: |
+          echo "IMAGE_NAME=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
@@ -96,6 +97,10 @@ jobs:
       packages: write
 
     steps:
+      - name: Lowercase image name
+        run: |
+          echo "IMAGE_NAME=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Download all digests
         uses: actions/download-artifact@v4
         with:
