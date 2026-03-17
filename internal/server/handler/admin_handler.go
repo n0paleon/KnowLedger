@@ -151,6 +151,7 @@ func (h *AdminHandler) EditFunFact(c fiber.Ctx) error {
 
 	updatedFact, err := h.funFactService.UpdateFunFact(c, req.ID, req)
 	if err != nil {
+		h.log.Error("failed to update fun fact", zap.Error(err))
 		renderData.Data = fiber.Map{
 			"success": false,
 			"error":   err.Error(),

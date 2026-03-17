@@ -3,6 +3,7 @@ package repository
 import (
 	"KnowLedger/internal/model"
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -159,21 +160,37 @@ func (r *FactRepository) Update(
 	var result model.Fact
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var count int64
-		if err := tx.Model(&model.Fact{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		var existing model.Fact
+		if err := tx.First(&existing, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("fact not found")
+			}
 			return fmt.Errorf("failed to check fact: %w", err)
 		}
-		if count == 0 {
-			return fmt.Errorf("fact not found")
+
+		if updatedFact.ContentHash != existing.ContentHash {
+			var hashCount int64
+			if err := tx.Model(&model.Fact{}).
+				Where("content_hash = ? AND id != ?", updatedFact.ContentHash, id).
+				Count(&hashCount).Error; err != nil {
+				return fmt.Errorf("failed to check content hash: %w", err)
+			}
+			if hashCount > 0 {
+				return fmt.Errorf("duplicate content: a fact with the same content already exists")
+			}
 		}
 
 		updates := map[string]interface{}{
-			"content":      updatedFact.Content,
-			"status":       updatedFact.Status,
-			"source_url":   updatedFact.SourceURL,
-			"media":        updatedFact.Media,
-			"content_hash": updatedFact.ContentHash,
+			"content":    updatedFact.Content,
+			"status":     updatedFact.Status,
+			"source_url": updatedFact.SourceURL,
+			"media":      updatedFact.Media,
 		}
+
+		if updatedFact.ContentHash != existing.ContentHash {
+			updates["content_hash"] = updatedFact.ContentHash
+		}
+
 		if err := tx.Model(&model.Fact{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return fmt.Errorf("failed to update fact: %w", err)
 		}
