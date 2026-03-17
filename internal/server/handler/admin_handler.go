@@ -4,6 +4,7 @@ import (
 	"KnowLedger/internal/server/helper"
 	"KnowLedger/internal/service"
 	"KnowLedger/pkg/dto"
+	"fmt"
 
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
@@ -12,13 +13,15 @@ import (
 type AdminHandler struct {
 	funFactService *service.FunFactService
 	profileService *service.ProfileService
+	gcService      *service.GCService
 	log            *zap.Logger
 }
 
-func NewAdminHandler(funFactService *service.FunFactService, profileService *service.ProfileService, logger *zap.Logger) *AdminHandler {
+func NewAdminHandler(funFactService *service.FunFactService, profileService *service.ProfileService, gcService *service.GCService, logger *zap.Logger) *AdminHandler {
 	return &AdminHandler{
 		funFactService: funFactService,
 		profileService: profileService,
+		gcService:      gcService,
 		log:            logger,
 	}
 }
@@ -218,5 +221,66 @@ func (h *AdminHandler) ShowProfile(c fiber.Ctx) error {
 	return c.Render("pages/admin/profile", dto.RenderData{
 		Title: "Profile",
 		Data:  profile,
+	}.ToMap())
+}
+
+func (h *AdminHandler) ShowGCJobs(c fiber.Ctx) error {
+	page := fiber.Query[int](c, "page", 0)
+	limit := fiber.Query[int](c, "limit", 0)
+	req := new(dto.GCJobListParams)
+
+	if err := c.Bind().Query(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if page == 0 || limit == 0 {
+		return c.Redirect().Route("Show GC Jobs", fiber.RedirectConfig{
+			Queries: map[string]string{
+				"page":  "1",
+				"limit": "50",
+			},
+		})
+	}
+
+	jobs, err := h.gcService.GetJobs(c, req)
+	if err != nil {
+		h.log.Error("GetJobs error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Render("pages/admin/jobs/index", dto.RenderData{
+		Title: "GC Jobs",
+		Data: fiber.Map{
+			"Jobs":   jobs,
+			"Filter": req,
+		},
+	}.ToMap())
+}
+
+func (h *AdminHandler) ShowGCJobDetails(c fiber.Ctx) error {
+	jobID := c.Params("job_id")
+	if jobID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "job_id is required",
+		})
+	}
+
+	job, err := h.gcService.GetJobDetails(c, jobID)
+	if err != nil {
+		h.log.Error("GetJobDetails error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Render("pages/admin/jobs/detail", dto.RenderData{
+		Title: fmt.Sprintf("Job Details for %s", jobID),
+		Data: fiber.Map{
+			"Job": job,
+		},
 	}.ToMap())
 }

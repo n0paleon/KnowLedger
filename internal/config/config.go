@@ -62,6 +62,7 @@ type WorkerConfig struct {
 
 type GCConfig struct {
 	IntervalSeconds            int     `mapstructure:"interval_seconds"`
+	LogRetentionDays           int     `mapstructure:"log_retention_days"`
 	ContentSimilarityThreshold float64 `mapstructure:"content_similarity_threshold"`
 }
 
@@ -87,11 +88,12 @@ func LoadConfig(filename string) (*Config, error) {
 	cfg.SetDefault("http.listen_addr", ":3000")
 
 	cfg.SetDefault("worker.pool_size", 100)
+
 	cfg.SetDefault("gc.interval_seconds", 60)
+	cfg.SetDefault("gc.content_similarity_threshold", 0.85)
+	cfg.SetDefault("gc.log_retention_days", 1)
 
 	cfg.SetDefault("redis.addr", "localhost:6379")
-
-	cfg.SetDefault("content_similarity_threshold", 0.85)
 
 	bindEnvs(cfg, Config{})
 

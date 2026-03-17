@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS gc_jobs;
+DROP TABLE IF EXISTS gc_job_logs;

@@ -38,3 +38,10 @@ type PostChangePasswordRequest struct {
 	Password        string `json:"password" validate:"required,min=6,max=50"`
 	ConfirmPassword string `json:"confirm_password" validate:"required,min=6,max=50"`
 }
+
+type GCJobListParams struct {
+	Page    int                `query:"page" validate:"numeric,gte=0"`
+	Limit   int                `query:"limit" validate:"numeric,gte=0"`
+	Status  model.GCJobStatus  `query:"status" validate:"omitempty,oneof=pending running completed failed"`
+	Trigger model.GCJobTrigger `query:"trigger" validate:"omitempty,oneof=automatic manual"`
+}
