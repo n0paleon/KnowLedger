@@ -14,16 +14,18 @@ type AdminApiHandler struct {
 	funFactService *service.FunFactService
 	mediaService   *service.MediaService
 	profileService *service.ProfileService
+	gcService      *service.GCService
 	log            *zap.Logger
 }
 
 const MaxFileUpload = 5 * 1024 * 1024 // 5MB
 
-func NewAdminApiHandler(fs *service.FunFactService, ms *service.MediaService, ps *service.ProfileService, logger *zap.Logger) *AdminApiHandler {
+func NewAdminApiHandler(fs *service.FunFactService, ms *service.MediaService, ps *service.ProfileService, gcS *service.GCService, logger *zap.Logger) *AdminApiHandler {
 	return &AdminApiHandler{
 		funFactService: fs,
 		mediaService:   ms,
 		profileService: ps,
+		gcService:      gcS,
 		log:            logger,
 	}
 }
@@ -173,5 +175,30 @@ func (h *AdminApiHandler) ChangePassword(c fiber.Ctx) error {
 
 	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
 		"success": true,
+	})
+}
+
+func (h *AdminApiHandler) TriggerManualGC(c fiber.Ctx) error {
+	jobID, err := h.gcService.TriggerManual(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(&fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	return c.Status(fiber.StatusOK).JSON(&fiber.Map{
+		"job_id": jobID,
+	})
+}
+
+func (h *AdminApiHandler) GetLogs(c fiber.Ctx) error {
+	job, err := h.gcService.GetJobDetails(c, c.Params("job_id"))
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(&fiber.Map{
+			"error": "job not found",
+		})
+	}
+	return c.JSON(&fiber.Map{
+		"status": job.Status,
+		"logs":   job.Logs,
 	})
 }

@@ -1,11 +1,15 @@
 package service
 
 import (
+	"KnowLedger/internal/model"
 	"KnowLedger/internal/repository"
 	"KnowLedger/internal/storage"
 	"KnowLedger/internal/workerpool"
+	"KnowLedger/pkg/dto"
 	"KnowLedger/pkg/utils"
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,21 +18,29 @@ import (
 
 type GCService struct {
 	factRepository      *repository.FactRepository
+	gcJobRepository     *repository.GCJobRepository
 	storage             storage.FileStorage
 	pool                *workerpool.Pool
 	log                 *zap.Logger
 	interval            time.Duration
 	stopCh              chan struct{}
 	similarityThreshold float64
+	mu                  sync.Mutex
+	running             bool
+	logRetention        time.Duration
+	jobWg               sync.WaitGroup // tracking job yang sedang berjalan
+	emitWg              sync.WaitGroup // tracking pending log writes ke DB
 }
 
 type GCServiceConfig struct {
 	FactRepository      *repository.FactRepository
+	GCJobRepository     *repository.GCJobRepository
 	Storage             storage.FileStorage
 	Pool                *workerpool.Pool
 	Log                 *zap.Logger
 	Interval            time.Duration
 	SimilarityThreshold float64
+	LogRetention        time.Duration
 }
 
 func NewGCService(config GCServiceConfig) *GCService {
@@ -39,12 +51,14 @@ func NewGCService(config GCServiceConfig) *GCService {
 
 	return &GCService{
 		factRepository:      config.FactRepository,
+		gcJobRepository:     config.GCJobRepository,
 		storage:             config.Storage,
 		pool:                config.Pool,
 		log:                 config.Log,
 		interval:            interval,
 		stopCh:              make(chan struct{}),
 		similarityThreshold: config.SimilarityThreshold,
+		logRetention:        config.LogRetention,
 	}
 }
 
@@ -53,7 +67,22 @@ func (s *GCService) Start() {
 }
 
 func (s *GCService) Stop() {
+	s.log.Info("gc service shutting down, waiting for active job to finish...")
 	close(s.stopCh)
+
+	done := make(chan struct{})
+	go func() {
+		s.jobWg.Wait()  // tunggu job selesai dulu
+		s.emitWg.Wait() // baru tunggu semua log selesai ditulis ke DB
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		s.log.Info("gc service shutdown complete")
+	case <-time.After(10 * time.Minute):
+		s.log.Warn("gc service shutdown timed out, forcing exit")
+	}
 }
 
 func (s *GCService) run() {
@@ -64,33 +93,248 @@ func (s *GCService) run() {
 
 	for {
 		select {
-		case <-ticker.C:
-			s.runAll()
 		case <-s.stopCh:
-			s.log.Info("gc service stopped", zap.String("interval", s.interval.String()))
+			s.log.Info("gc service stopped")
 			return
+		case <-ticker.C:
+			// Cek ulang stopCh sebelum trigger — hindari race saat keduanya ready bersamaan
+			select {
+			case <-s.stopCh:
+				s.log.Info("gc service stopped")
+				return
+			default:
+				s.triggerJob(context.Background(), model.GCJobTriggerAutomatic)
+			}
 		}
 	}
 }
 
-func (s *GCService) runAll() {
-	s.cleanupObjectStorage()
-	s.removeNearDuplicateFacts()
+// TriggerManual dipanggil oleh HTTP handler — non-blocking, return jobID langsung
+func (s *GCService) TriggerManual(ctx context.Context) (string, error) {
+	s.mu.Lock()
+	if s.running {
+		s.mu.Unlock()
+		return "", errors.New("gc is already running")
+	}
+	s.running = true
+	s.mu.Unlock()
+
+	job, err := s.createJob(ctx, model.GCJobTriggerManual)
+	if err != nil {
+		s.mu.Lock()
+		s.running = false
+		s.mu.Unlock()
+		return "", fmt.Errorf("failed to create gc job: %w", err)
+	}
+
+	s.jobWg.Add(1)
+	_ = s.pool.Submit(func() {
+		defer s.jobWg.Done()
+		defer func() {
+			s.mu.Lock()
+			s.running = false
+			s.mu.Unlock()
+		}()
+		s.executeJob(context.Background(), job.ID)
+	})
+
+	return job.ID, nil
 }
 
-func (s *GCService) removeNearDuplicateFacts() {
-	start := time.Now()
-	timeout := 60 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+func (s *GCService) GetJobs(ctx context.Context, params *dto.GCJobListParams) (*model.Paginated[*model.GCJob], error) {
+	jobs, err := s.gcJobRepository.FindAll(ctx, model.GCJobListParams{
+		Page:    params.Page,
+		Limit:   params.Limit,
+		Status:  params.Status,
+		Trigger: params.Trigger,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobs: %w", err)
+	}
+	return jobs, nil
+}
 
-	s.log.Info("trying to find duplicate/near-duplicate content", zap.Duration("timeout", timeout))
+func (s *GCService) GetJobDetails(ctx context.Context, id string) (*model.GCJob, error) {
+	return s.gcJobRepository.FindByID(ctx, id)
+}
 
-	facts, _ := s.factRepository.FindAll(ctx)
-	if len(facts) == 0 {
-		s.log.Info("no draft facts found")
+// triggerJob dipanggil oleh cron ticker — blocking sampai selesai
+func (s *GCService) triggerJob(ctx context.Context, trigger model.GCJobTrigger) {
+	s.mu.Lock()
+	if s.running {
+		s.mu.Unlock()
+		s.log.Info("gc skipped: already running")
 		return
 	}
+	s.running = true
+	s.mu.Unlock()
+
+	s.jobWg.Add(1)
+	defer s.jobWg.Done()
+	defer func() {
+		s.mu.Lock()
+		s.running = false
+		s.mu.Unlock()
+	}()
+
+	job, err := s.createJob(ctx, trigger)
+	if err != nil {
+		s.log.Error("failed to create gc job", zap.Error(err))
+		return
+	}
+
+	s.executeJob(ctx, job.ID)
+}
+
+func (s *GCService) createJob(ctx context.Context, trigger model.GCJobTrigger) (*model.GCJob, error) {
+	now := time.Now()
+	job := &model.GCJob{
+		ID:        utils.GenerateRandomULID(),
+		Status:    model.GCJobStatusRunning,
+		Trigger:   trigger,
+		StartedAt: &now,
+	}
+	return job, s.gcJobRepository.Create(ctx, job)
+}
+
+func (s *GCService) finishJob(ctx context.Context, jobID string, status model.GCJobStatus) {
+	now := time.Now()
+	if err := s.gcJobRepository.UpdateStatus(ctx, jobID, status, &now); err != nil {
+		s.log.Error("failed to update gc job status",
+			zap.String("job_id", jobID),
+			zap.Error(err),
+		)
+	}
+}
+
+// emit menulis log ke zap dan ke DB secara fire-and-forget
+func (s *GCService) emit(ctx context.Context, jobID, level, msg string) {
+	switch level {
+	case "error":
+		s.log.Error(msg, zap.String("job_id", jobID))
+	case "debug":
+		s.log.Debug(msg, zap.String("job_id", jobID))
+	default:
+		s.log.Info(msg, zap.String("job_id", jobID))
+	}
+
+	s.emitWg.Add(1)
+	_ = s.pool.Submit(func() {
+		defer s.emitWg.Done()
+		if err := s.gcJobRepository.AppendLog(context.Background(), jobID, level, msg); err != nil {
+			s.log.Error("failed to append gc job log",
+				zap.String("job_id", jobID),
+				zap.Error(err),
+			)
+		}
+	})
+}
+
+func (s *GCService) executeJob(ctx context.Context, jobID string) {
+	status := model.GCJobStatusCompleted
+	defer func() {
+		s.finishJob(ctx, jobID, status)
+	}()
+
+	if err := s.cleanupObjectStorage(ctx, jobID); err != nil {
+		s.emit(ctx, jobID, "error", fmt.Sprintf("object storage cleanup failed: %v", err))
+		status = model.GCJobStatusFailed
+		return
+	}
+
+	s.removeNearDuplicateFacts(ctx, jobID)
+	s.cleanupOldJobs(ctx, jobID)
+}
+
+func (s *GCService) cleanupObjectStorage(ctx context.Context, jobID string) error {
+	cleanupCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	s.emit(cleanupCtx, jobID, "info", "scanning media keys from database...")
+
+	keySet := make(map[string]struct{})
+	if err := s.factRepository.ScanMediaKeys(cleanupCtx, func(key string) error {
+		keySet[key] = struct{}{}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to scan media keys: %w", err)
+	}
+
+	s.emit(cleanupCtx, jobID, "info", fmt.Sprintf("found %d known media keys, scanning object storage...", len(keySet)))
+
+	var orphanKeys []string
+	if err := s.storage.ScanAll(cleanupCtx, func(item storage.ScanResult) error {
+		if time.Since(item.LastModified) < time.Hour {
+			return nil
+		}
+		if _, known := keySet[item.Key]; !known {
+			orphanKeys = append(orphanKeys, item.Key)
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to scan object storage: %w", err)
+	}
+
+	if len(orphanKeys) == 0 {
+		s.emit(cleanupCtx, jobID, "info", "no orphan objects found")
+		return nil
+	}
+
+	s.emit(cleanupCtx, jobID, "info", fmt.Sprintf("found %d orphan objects, deleting in batches...", len(orphanKeys)))
+
+	const batchSize = 1000
+	var wg sync.WaitGroup
+	var deletedCount sync.Map
+
+	for i := 0; i < len(orphanKeys); i += batchSize {
+		end := min(i+batchSize, len(orphanKeys))
+		batch := orphanKeys[i:end]
+		batchStart := i
+
+		wg.Add(1)
+		_ = s.pool.Submit(func() {
+			defer wg.Done()
+
+			if err := s.storage.DeleteBatch(cleanupCtx, batch); err != nil {
+				s.emit(cleanupCtx, jobID, "error", fmt.Sprintf(
+					"batch delete failed (start: %d, size: %d): %v",
+					batchStart, len(batch), err,
+				))
+			} else {
+				deletedCount.Store(batchStart, len(batch))
+				s.emit(cleanupCtx, jobID, "info", fmt.Sprintf(
+					"batch deleted (start: %d, size: %d)",
+					batchStart, len(batch),
+				))
+			}
+		})
+	}
+
+	wg.Wait()
+
+	s.emit(cleanupCtx, jobID, "info", "object storage cleanup completed")
+	return nil
+}
+
+func (s *GCService) removeNearDuplicateFacts(ctx context.Context, jobID string) {
+	start := time.Now()
+	dupCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
+	s.emit(dupCtx, jobID, "info", "loading facts for duplicate detection...")
+
+	facts, err := s.factRepository.FindAll(dupCtx)
+	if err != nil {
+		s.emit(dupCtx, jobID, "error", fmt.Sprintf("failed to load facts: %v", err))
+		return
+	}
+
+	if len(facts) == 0 {
+		s.emit(dupCtx, jobID, "info", "no facts found, skipping duplicate detection")
+		return
+	}
+
+	s.emit(dupCtx, jobID, "info", fmt.Sprintf("loaded %d facts, normalizing content in parallel...", len(facts)))
 
 	type normalizedFact struct {
 		id      string
@@ -114,6 +358,8 @@ func (s *GCService) removeNearDuplicateFacts() {
 	}
 	wg.Wait()
 
+	s.emit(dupCtx, jobID, "info", "normalization done, running similarity check...")
+
 	toDelete := make([]string, 0)
 	type seen struct {
 		id      string
@@ -126,15 +372,23 @@ func (s *GCService) removeNearDuplicateFacts() {
 		isDuplicate := false
 
 		for i, sf := range seenFacts {
-			similarityScore := utils.CosineSimilarityText(nf.text, sf.text)
-			if similarityScore <= s.similarityThreshold {
+			score := utils.CosineSimilarityText(nf.text, sf.text)
+			if score <= s.similarityThreshold {
 				continue
 			}
 
 			if len(nf.content) >= len(sf.content) {
+				s.emit(dupCtx, jobID, "info", fmt.Sprintf(
+					"near-duplicate: keep %s, remove %s (score: %.4f)",
+					nf.id, sf.id, score,
+				))
 				toDelete = append(toDelete, sf.id)
 				seenFacts[i] = seen{nf.id, nf.text, nf.content}
 			} else {
+				s.emit(dupCtx, jobID, "info", fmt.Sprintf(
+					"near-duplicate: keep %s, remove %s (score: %.4f)",
+					sf.id, nf.id, score,
+				))
 				toDelete = append(toDelete, nf.id)
 			}
 
@@ -147,88 +401,48 @@ func (s *GCService) removeNearDuplicateFacts() {
 		}
 	}
 
-	if len(toDelete) > 0 {
-		s.log.Info("removing duplicate facts",
-			zap.Int("total", len(toDelete)),
-			zap.Strings("ids", toDelete),
-		)
-		if err := s.factRepository.BulkDelete(ctx, toDelete); err != nil {
-			s.log.Error("failed to delete facts", zap.Strings("factIds", toDelete), zap.Error(err))
-		}
-	} else {
-		s.log.Info("no duplicate/near-duplicate facts found", zap.Int("total", len(toDelete)))
+	if len(toDelete) == 0 {
+		s.emit(dupCtx, jobID, "info", "no duplicate or near-duplicate facts found")
+		s.emit(dupCtx, jobID, "debug", fmt.Sprintf("duplicate check finished in %.2fs", time.Since(start).Seconds()))
+		return
 	}
 
-	s.log.Debug("removeNearDuplicateFacts()",
-		zap.Float64("time_taken_seconds", time.Since(start).Seconds()),
-	)
+	s.emit(dupCtx, jobID, "info", fmt.Sprintf("deleting %d duplicate facts...", len(toDelete)))
+
+	if err := s.factRepository.BulkDelete(dupCtx, toDelete); err != nil {
+		s.emit(dupCtx, jobID, "error", fmt.Sprintf("failed to delete duplicate facts: %v", err))
+		return
+	}
+
+	s.emit(dupCtx, jobID, "info", fmt.Sprintf("deleted %d duplicate facts", len(toDelete)))
+	s.emit(dupCtx, jobID, "debug", fmt.Sprintf("duplicate check finished in %.2fs", time.Since(start).Seconds()))
 }
 
-// cleanup scan all object on storage, filter unused object, and delete them
-func (s *GCService) cleanupObjectStorage() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) // max 5 minute for waiting cleanup processes
-	defer cancel()
+func (s *GCService) cleanupOldJobs(ctx context.Context, jobID string) {
+	before := time.Now().Add(-s.logRetention)
 
-	s.log.Info("gc cleanup started")
+	s.emit(ctx, jobID, "info", fmt.Sprintf("cleaning up gc jobs older than %s...", before.Format("2006-01-02")))
 
-	keySet := make(map[string]struct{})
-
-	err := s.factRepository.ScanMediaKeys(ctx, func(key string) error {
-		keySet[key] = struct{}{}
-		return nil
-	})
-
+	oldJobs, err := s.gcJobRepository.FindOlderThan(ctx, before)
 	if err != nil {
-		s.log.Error("failed to scan media keys", zap.Error(err))
+		s.emit(ctx, jobID, "error", fmt.Sprintf("failed to fetch old jobs: %v", err))
 		return
 	}
 
-	var orphanKeys []string
-	if err := s.storage.ScanAll(ctx, func(item storage.ScanResult) error {
-		if time.Since(item.LastModified) < time.Hour {
-			return nil
-		}
-
-		if _, known := keySet[item.Key]; !known {
-			orphanKeys = append(orphanKeys, item.Key)
-		}
-		return nil
-	}); err != nil {
-		s.log.Error("failed to scan orphan keys", zap.Error(err))
+	if len(oldJobs) == 0 {
+		s.emit(ctx, jobID, "info", "no old gc jobs to clean up")
 		return
 	}
 
-	if len(orphanKeys) == 0 {
-		s.log.Info("gc no orphan objects found")
+	ids := make([]string, len(oldJobs))
+	for i, j := range oldJobs {
+		ids[i] = j.ID
+	}
+
+	if err := s.gcJobRepository.DeleteBatch(ctx, ids); err != nil {
+		s.emit(ctx, jobID, "error", fmt.Sprintf("failed to delete old jobs: %v", err))
 		return
 	}
 
-	s.log.Info("gc found orphan objects", zap.Int("count", len(orphanKeys)))
-
-	const batchSize = 1000
-	var wg sync.WaitGroup
-
-	for i := 0; i < len(orphanKeys); i += batchSize {
-		end := min(i+batchSize, len(orphanKeys))
-		batch := orphanKeys[i:end]
-
-		wg.Add(1)
-		_ = s.pool.Submit(func() {
-			defer wg.Done()
-
-			if err := s.storage.DeleteBatch(ctx, batch); err != nil {
-				s.log.Error("gc batch delete failed",
-					zap.Int("batch_start", i),
-					zap.Int("batch_size", len(batch)),
-					zap.Error(err),
-				)
-			} else {
-				s.log.Info("gc batch delete finished",
-					zap.Int("batch_size", len(batch)),
-				)
-			}
-		})
-	}
-
-	wg.Wait()
+	s.emit(ctx, jobID, "info", fmt.Sprintf("deleted %d old gc jobs", len(ids)))
 }

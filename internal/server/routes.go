@@ -36,6 +36,8 @@ func SetupRoutes(
 	admin.Post("/facts/:id/edit", adminHandler.EditFunFact).Name("Edit Fun Fact")
 	admin.Get("/tags", adminHandler.ShowTags).Name("Show Tags")
 	admin.Get("/profile", adminHandler.ShowProfile).Name("Show Profile")
+	admin.Get("/gc/jobs", adminHandler.ShowGCJobs).Name("Show GC Jobs")
+	admin.Get("/gc/jobs/:job_id", adminHandler.ShowGCJobDetails).Name("Show GC Job Details")
 
 	adminApi.Delete("/facts/:id", adminApiHandler.DeleteFunFact).Name("API - Delete One Fun Fact")
 	adminApi.Post("/media", adminApiHandler.UploadMedia).Name("API - Upload Media")
@@ -43,6 +45,8 @@ func SetupRoutes(
 	adminApi.Get("/tags/suggestions", adminApiHandler.GetTagSuggestions).Name("API - Get Tag Suggestions")
 	adminApi.Post("/profile/reset-apikey", adminApiHandler.ResetApiKey).Name("API - Reset API key")
 	adminApi.Post("/profile/change-password", adminApiHandler.ChangePassword).Name("API - Change Password")
+	adminApi.Post("/gc/execute", adminApiHandler.TriggerManualGC).Name("API - Trigger Manual GC")
+	adminApi.Get("/gc/jobs/:job_id/logs", adminApiHandler.GetLogs).Name("API - Get Job Logs")
 
 	public.Get("/", publicHandler.PublicShowIndex).Name("Public Index")
 
