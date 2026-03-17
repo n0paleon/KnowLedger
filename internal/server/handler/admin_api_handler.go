@@ -4,6 +4,7 @@ import (
 	"KnowLedger/internal/server/helper"
 	"KnowLedger/internal/service"
 	"KnowLedger/pkg/dto"
+	"bytes"
 	"io"
 
 	"github.com/gofiber/fiber/v3"
@@ -18,7 +19,7 @@ type AdminApiHandler struct {
 	log            *zap.Logger
 }
 
-const MaxFileUpload = 5 * 1024 * 1024 // 5MB
+const MaxFileUpload = 15 * 1024 * 1024 // 15MB
 
 func NewAdminApiHandler(fs *service.FunFactService, ms *service.MediaService, ps *service.ProfileService, gcS *service.GCService, logger *zap.Logger) *AdminApiHandler {
 	return &AdminApiHandler{
@@ -93,17 +94,15 @@ func (h *AdminApiHandler) UploadMedia(c fiber.Ctx) error {
 	}
 	defer f.Close()
 
-	limitedReader := io.LimitReader(f, int64(MaxFileUpload))
-
-	data, err := io.ReadAll(limitedReader)
-	if err != nil {
-		h.log.Error("UploadMedia io.ReadAll() error", zap.Error(err))
-		return c.Status(fiber.StatusBadRequest).JSON(&fiber.Map{
-			"error": err.Error(),
+	buf := bytes.NewBuffer(make([]byte, 0, file.Size))
+	if _, err := io.Copy(buf, f); err != nil {
+		h.log.Error("UploadMedia io.Copy() error", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(&fiber.Map{
+			"error": "failed to upload media file",
 		})
 	}
 
-	result, err := h.mediaService.SaveMedia(c, data)
+	result, err := h.mediaService.SaveMedia(c, buf.Bytes())
 	if err != nil {
 		h.log.Error("UploadMedia SaveMedia() error", zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(&fiber.Map{
