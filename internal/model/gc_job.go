@@ -55,4 +55,5 @@ type GCJobListParams struct {
 	Limit   int
 	Status  GCJobStatus
 	Trigger GCJobTrigger
+	SortDir string
 }

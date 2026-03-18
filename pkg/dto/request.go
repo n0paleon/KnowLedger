@@ -44,4 +44,5 @@ type GCJobListParams struct {
 	Limit   int                `query:"limit" validate:"numeric,gte=0"`
 	Status  model.GCJobStatus  `query:"status" validate:"omitempty,oneof=pending running completed failed"`
 	Trigger model.GCJobTrigger `query:"trigger" validate:"omitempty,oneof=automatic manual"`
+	SortDir string             `query:"sortDir" validate:"omitempty,oneof=asc desc"`
 }

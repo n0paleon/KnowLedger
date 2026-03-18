@@ -85,6 +85,7 @@ func (r *GCJobRepository) FindAll(ctx context.Context, params model.GCJobListPar
 		Scopes(
 			WithPagination(params.Page, params.Limit),
 		).
+		Order("created_at " + params.SortDir).
 		Find(&jobs).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch jobs: %w", err)

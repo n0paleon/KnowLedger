@@ -142,11 +142,16 @@ func (s *GCService) TriggerManual(ctx context.Context) (string, error) {
 }
 
 func (s *GCService) GetJobs(ctx context.Context, params *dto.GCJobListParams) (*model.Paginated[*model.GCJob], error) {
+	if params.SortDir == "" {
+		params.SortDir = "desc"
+	}
+
 	jobs, err := s.gcJobRepository.FindAll(ctx, model.GCJobListParams{
 		Page:    params.Page,
 		Limit:   params.Limit,
 		Status:  params.Status,
 		Trigger: params.Trigger,
+		SortDir: params.SortDir,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get jobs: %w", err)
