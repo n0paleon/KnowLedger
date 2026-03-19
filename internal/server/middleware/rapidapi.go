@@ -41,3 +41,9 @@ func (m *RapidAPIMiddleware) ProxyAuthMiddleware(c fiber.Ctx) error {
 
 	return c.Next()
 }
+
+func (m *RapidAPIMiddleware) HealthCheckMiddleware(c fiber.Ctx) error {
+	return c.Status(fiber.StatusOK).JSON(dto.APIResponse{
+		Data: "KnowLedger is ready!",
+	})
+}

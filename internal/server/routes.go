@@ -30,6 +30,7 @@ func SetupRoutes(
 
 	rapidapi := app.Group("/api/rapidapi")
 	rapidapi.Use(rapidApiMiddleware.ProxyAuthMiddleware)
+	rapidapi.Use("/ping", rapidApiMiddleware.HealthCheckMiddleware)
 
 	// admin handler
 	admin.Get("/", func(c fiber.Ctx) error {
