@@ -17,6 +17,7 @@ type Config struct {
 	Worker   WorkerConfig   `mapstructure:"worker"`
 	GC       GCConfig       `mapstructure:"gc"`
 	Admin    AdminConfig    `mapstructure:"admin"`
+	Api      ApiConfig      `mapstructure:"api"`
 }
 
 type AppConfig struct {
@@ -69,6 +70,10 @@ type GCConfig struct {
 type AdminConfig struct {
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
+}
+
+type ApiConfig struct {
+	RapidAPIProxySecret string `mapstructure:"rapidapi_proxy_secret"`
 }
 
 func LoadConfig(filename string) (*Config, error) {

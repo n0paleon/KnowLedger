@@ -7,6 +7,7 @@ import (
 	"KnowLedger/internal/repository"
 	"KnowLedger/internal/server"
 	"KnowLedger/internal/server/handler"
+	"KnowLedger/internal/server/middleware"
 	"KnowLedger/internal/service"
 	"KnowLedger/internal/storage"
 	"KnowLedger/internal/storage/cache"
@@ -96,6 +97,10 @@ func main() {
 			handler.NewPublicHandler,
 			handler.NewAuthHandler,
 			handler.NewInternalAPIHandler,
+			handler.NewRapidAPIHandler,
+
+			// custom middleware
+			middleware.NewRapidAPIMiddleware,
 
 			server.NewHttpServer,
 		),
@@ -134,13 +139,15 @@ func registerHooks(
 	publicHandler *handler.PublicHandler,
 	authHandler *handler.AuthHandler,
 	internalApiHandler *handler.InternalAPIHandler,
+	rapidApiHandler *handler.RapidAPIHandler,
+	rapidApiMiddleware *middleware.RapidAPIMiddleware,
 	pool *workerpool.Pool,
 	db *gorm.DB,
 	gcService *service.GCService,
 	adminRepo *repository.AdminRepository,
 	redisClient redis.UniversalClient,
 ) {
-	server.SetupRoutes(serv, adminHandler, adminApiHandler, publicHandler, authHandler, internalApiHandler)
+	server.SetupRoutes(serv, adminHandler, adminApiHandler, publicHandler, authHandler, internalApiHandler, rapidApiHandler, rapidApiMiddleware)
 
 	gracefulCtx, gracefulCancel := context.WithCancel(context.Background())
 	monitorCtx, monitorCancel := context.WithCancel(context.Background())
