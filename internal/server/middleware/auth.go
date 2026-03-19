@@ -17,16 +17,12 @@ func RequireAuth(c fiber.Ctx) error {
 
 	// Check if user is authenticated
 	if sess.Get("authenticated") != true {
-		return c.Status(401).JSON(fiber.Map{
-			"error": "unauthorized",
-		})
+		return c.Redirect().Route("Show Admin Login")
 	}
 
 	userID, ok := sess.Get("user_id").(string)
 	if userID == "" || !ok {
-		return c.Status(401).JSON(fiber.Map{
-			"error": "unauthorized",
-		})
+		return c.Redirect().Route("")
 	}
 	helper.SetUserID(c, userID)
 
