@@ -3,6 +3,7 @@ package dto
 import (
 	"KnowLedger/internal/model"
 	"KnowLedger/pkg/utils"
+	"html"
 )
 
 type FactResponse struct {
@@ -27,7 +28,7 @@ type FactMediaResponse struct {
 func ConvertFactModelToDto(fact *model.Fact) FactResponse {
 	f := FactResponse{}
 	f.Content = utils.StripHTML(fact.Content)
-	f.ContentHTML = fact.Content
+	f.ContentHTML = html.UnescapeString(fact.Content)
 	f.SourceURL = fact.SourceURL
 
 	if fact.Media != nil {

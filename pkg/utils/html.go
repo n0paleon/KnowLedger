@@ -1,9 +1,14 @@
 package utils
 
-import "github.com/microcosm-cc/bluemonday"
+import (
+	"html"
+
+	"github.com/microcosm-cc/bluemonday"
+)
 
 var strictPolicy = bluemonday.StrictPolicy()
 
 func StripHTML(s string) string {
-	return strictPolicy.Sanitize(s)
+	sanitized := strictPolicy.Sanitize(s)
+	return html.UnescapeString(sanitized) // decode &#34; → "
 }
