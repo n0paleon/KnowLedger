@@ -98,9 +98,11 @@ func main() {
 			handler.NewAuthHandler,
 			handler.NewInternalAPIHandler,
 			handler.NewRapidAPIHandler,
+			handler.NewLimitPearHandler,
 
 			// custom middleware
 			middleware.NewRapidAPIMiddleware,
+			middleware.NewLimitPearMiddleware,
 
 			server.NewHttpServer,
 		),
@@ -141,13 +143,26 @@ func registerHooks(
 	internalApiHandler *handler.InternalAPIHandler,
 	rapidApiHandler *handler.RapidAPIHandler,
 	rapidApiMiddleware *middleware.RapidAPIMiddleware,
+	limitPearHandler *handler.LimitPearHandler,
+	limitPearMiddleware *middleware.LimitPearMiddleware,
 	pool *workerpool.Pool,
 	db *gorm.DB,
 	gcService *service.GCService,
 	adminRepo *repository.AdminRepository,
 	redisClient redis.UniversalClient,
 ) {
-	server.SetupRoutes(serv, adminHandler, adminApiHandler, publicHandler, authHandler, internalApiHandler, rapidApiHandler, rapidApiMiddleware)
+	server.SetupRoutes(
+		serv,
+		adminHandler,
+		adminApiHandler,
+		publicHandler,
+		authHandler,
+		internalApiHandler,
+		rapidApiHandler,
+		rapidApiMiddleware,
+		limitPearHandler,
+		limitPearMiddleware,
+	)
 
 	gracefulCtx, gracefulCancel := context.WithCancel(context.Background())
 	monitorCtx, monitorCancel := context.WithCancel(context.Background())
