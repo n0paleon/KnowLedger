@@ -18,13 +18,13 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 )
 
-type R2CASStorage struct {
+type CASStorage struct {
 	client    *s3.Client
 	bucket    string
 	publicUrl string
 }
 
-func NewR2CASStorage(bucketName, accessKey, secretKey, endpoint, publicUrl string) (*R2CASStorage, error) {
+func NewR2CASStorage(bucketName, accessKey, secretKey, endpoint, publicUrl string) (*CASStorage, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(accessKey, secretKey, ""),
@@ -39,14 +39,14 @@ func NewR2CASStorage(bucketName, accessKey, secretKey, endpoint, publicUrl strin
 		o.BaseEndpoint = aws.String(endpoint)
 	})
 
-	return &R2CASStorage{
+	return &CASStorage{
 		client:    client,
 		bucket:    bucketName,
 		publicUrl: publicUrl,
 	}, nil
 }
 
-func (r *R2CASStorage) Upload(ctx context.Context, data []byte) (*model.MediaItem, error) {
+func (r *CASStorage) Upload(ctx context.Context, data []byte) (*model.MediaItem, error) {
 	contentType := mimetype.Detect(data)
 	if contentType.Is("application/octet-stream") {
 		return nil, errors.New("unsupported or unrecognized file type")
@@ -95,7 +95,7 @@ func (r *R2CASStorage) Upload(ctx context.Context, data []byte) (*model.MediaIte
 	}, nil
 }
 
-func (r *R2CASStorage) Delete(ctx context.Context, key string) error {
+func (r *CASStorage) Delete(ctx context.Context, key string) error {
 	_, err := r.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(r.bucket),
 		Key:    aws.String(key),
@@ -104,7 +104,7 @@ func (r *R2CASStorage) Delete(ctx context.Context, key string) error {
 	return err
 }
 
-func (r *R2CASStorage) Exists(ctx context.Context, key string) (bool, error) {
+func (r *CASStorage) Exists(ctx context.Context, key string) (bool, error) {
 	_, err := r.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(r.bucket),
 		Key:    aws.String(key),
@@ -123,11 +123,11 @@ func (r *R2CASStorage) Exists(ctx context.Context, key string) (bool, error) {
 	return true, nil
 }
 
-func (r *R2CASStorage) GetURL(ctx context.Context, key string) string {
+func (r *CASStorage) GetURL(ctx context.Context, key string) string {
 	return r.publicUrl + key
 }
 
-func (r *R2CASStorage) GetDetails(ctx context.Context, key string) (*model.MediaItem, error) {
+func (r *CASStorage) GetDetails(ctx context.Context, key string) (*model.MediaItem, error) {
 	output, err := r.client.HeadObject(ctx, &s3.HeadObjectInput{
 		Bucket: aws.String(r.bucket),
 		Key:    aws.String(key),
@@ -161,7 +161,7 @@ func (r *R2CASStorage) GetDetails(ctx context.Context, key string) (*model.Media
 	}, nil
 }
 
-func (r *R2CASStorage) DeleteBatch(ctx context.Context, keys []string) error {
+func (r *CASStorage) DeleteBatch(ctx context.Context, keys []string) error {
 	if len(keys) == 0 {
 		return nil
 	}
@@ -209,7 +209,7 @@ func (r *R2CASStorage) DeleteBatch(ctx context.Context, keys []string) error {
 	return nil
 }
 
-func (r *R2CASStorage) ScanAll(ctx context.Context, fn func(item storage.ScanResult) error) error {
+func (r *CASStorage) ScanAll(ctx context.Context, fn func(item storage.ScanResult) error) error {
 	var continuationToken *string
 
 	for {
