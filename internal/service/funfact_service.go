@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type FunFactService struct {
@@ -135,7 +136,6 @@ func (s *FunFactService) CreateFactBulk(ctx context.Context, facts []*dto.PostCr
 	var batchErrs error
 
 	txErr := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		factRepo := s.factRepository.WithTx(tx)
 		tagRepo := s.tagRepository.WithTx(tx)
 
 		existingTags, err := tagRepo.FindTagsByNames(ctx, allTagNames)
@@ -175,16 +175,15 @@ func (s *FunFactService) CreateFactBulk(ctx context.Context, facts []*dto.PostCr
 			}
 		}
 
-		var newFacts []model.Fact
 		for _, f := range facts {
 			var media *model.MediaItem
 			if f.MediaKey != "" {
-				m, err := s.mediaService.GetMediaDetails(ctx, f.MediaKey)
-				if err != nil {
+				m, mErr := s.mediaService.GetMediaDetails(ctx, f.MediaKey)
+				if mErr != nil {
 					failCount++
 					batchErrs = errors.Join(batchErrs, fmt.Errorf(
 						"skipped fact (content: %.30q): invalid media key: %w",
-						f.Content, err,
+						f.Content, mErr,
 					))
 					continue
 				}
@@ -199,39 +198,60 @@ func (s *FunFactService) CreateFactBulk(ctx context.Context, facts []*dto.PostCr
 				}
 			}
 
-			newFacts = append(newFacts, model.Fact{
+			newFact := model.Fact{
 				Content:   f.Content,
 				Status:    model.FactStatusDraft,
 				SourceURL: f.SourceURL,
-				Tags:      factTags,
 				Media:     media,
-			})
+			}
+
+			result := tx.WithContext(ctx).
+				Omit(clause.Associations).
+				Clauses(clause.OnConflict{DoNothing: true}).
+				Create(&newFact)
+
+			if result.Error != nil {
+				failCount++
+				batchErrs = errors.Join(batchErrs, fmt.Errorf(
+					"failed to insert fact (content: %.30q): %w",
+					f.Content, result.Error,
+				))
+				continue
+			}
+
+			if result.RowsAffected == 0 {
+				failCount++
+				batchErrs = errors.Join(batchErrs, fmt.Errorf(
+					"skipped duplicate fact (content: %.30q): content_hash conflict",
+					f.Content,
+				))
+				continue
+			}
+
+			if len(factTags) > 0 {
+				if assocErr := tx.WithContext(ctx).
+					Model(&newFact).
+					Association("Tags").
+					Append(factTags); assocErr != nil {
+					batchErrs = errors.Join(batchErrs, fmt.Errorf(
+						"fact inserted but failed to attach tags (content: %.30q): %w",
+						f.Content, assocErr,
+					))
+				}
+			}
 		}
 
-		batchStart := 0
-		if err := repository.InsertInBatches(ctx, newFacts, factBatchSize, func(batch []model.Fact) error {
-			if err := factRepo.CreateBulk(ctx, batch); err != nil {
-				failCount += len(batch)
-				batchErrs = errors.Join(batchErrs, fmt.Errorf(
-					"batch [%d..%d] failed: %w",
-					batchStart, batchStart+len(batch)-1, err,
-				))
-			}
-			batchStart += len(batch)
-			return nil
-		}); err != nil {
-			return err
-		}
+		failed = failCount
+		err = batchErrs
 
 		return nil
 	})
 
 	if txErr != nil {
-		// if the process reaches this part, it means there is a very fatal error.
 		return len(facts), fmt.Errorf("transaction failed: %w", txErr)
 	}
 
-	return failCount, batchErrs
+	return failed, err
 }
 
 func (s *FunFactService) GetFunFactStats(ctx context.Context) (*model.FunFactStats, error) {
