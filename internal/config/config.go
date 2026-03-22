@@ -73,7 +73,8 @@ type AdminConfig struct {
 }
 
 type ApiConfig struct {
-	RapidAPIProxySecret string `mapstructure:"rapidapi_proxy_secret"`
+	RapidAPIProxySecret  string `mapstructure:"rapidapi_proxy_secret"`
+	LimitPearProxySecret string `mapstructure:"limitpear_proxy_secret"`
 }
 
 func LoadConfig(filename string) (*Config, error) {
