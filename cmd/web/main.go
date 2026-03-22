@@ -97,12 +97,10 @@ func main() {
 			handler.NewPublicHandler,
 			handler.NewAuthHandler,
 			handler.NewInternalAPIHandler,
-			handler.NewRapidAPIHandler,
-			handler.NewLimitPearHandler,
+			handler.NewAPIMarketplaceHandler,
 
 			// custom middleware
-			middleware.NewRapidAPIMiddleware,
-			middleware.NewLimitPearMiddleware,
+			middleware.NewAPIMarketplaceMiddleware,
 
 			server.NewHttpServer,
 		),
@@ -141,10 +139,8 @@ func registerHooks(
 	publicHandler *handler.PublicHandler,
 	authHandler *handler.AuthHandler,
 	internalApiHandler *handler.InternalAPIHandler,
-	rapidApiHandler *handler.RapidAPIHandler,
-	rapidApiMiddleware *middleware.RapidAPIMiddleware,
-	limitPearHandler *handler.LimitPearHandler,
-	limitPearMiddleware *middleware.LimitPearMiddleware,
+	marketplaceApiHandler *handler.APIMarketplaceHandler,
+	marketplaceApiMiddleware *middleware.APIMarketplaceMiddleware,
 	pool *workerpool.Pool,
 	db *gorm.DB,
 	gcService *service.GCService,
@@ -158,10 +154,8 @@ func registerHooks(
 		publicHandler,
 		authHandler,
 		internalApiHandler,
-		rapidApiHandler,
-		rapidApiMiddleware,
-		limitPearHandler,
-		limitPearMiddleware,
+		marketplaceApiHandler,
+		marketplaceApiMiddleware,
 	)
 
 	gracefulCtx, gracefulCancel := context.WithCancel(context.Background())

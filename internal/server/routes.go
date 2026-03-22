@@ -14,10 +14,8 @@ func SetupRoutes(
 	publicHandler *handler.PublicHandler,
 	authHandler *handler.AuthHandler,
 	internalApiHandler *handler.InternalAPIHandler,
-	rapidApiHandler *handler.RapidAPIHandler,
-	rapidApiMiddleware *middleware.RapidAPIMiddleware,
-	limitPearHandler *handler.LimitPearHandler,
-	limitPearMiddleware *middleware.LimitPearMiddleware,
+	marketplaceApiHandler *handler.APIMarketplaceHandler,
+	marketplaceApiMiddleware *middleware.APIMarketplaceMiddleware,
 ) {
 	admin := app.Group("/admin")
 	admin.Use(middleware.RequireAuth)
@@ -30,13 +28,10 @@ func SetupRoutes(
 	internalApi := app.Group("/internal/api")
 	internalApi.Use(internalApiHandler.AuthMiddleware)
 
-	rapidapi := app.Group("/api/rapidapi")
-	rapidapi.Use(rapidApiMiddleware.ProxyAuthMiddleware)
-	rapidapi.Use("/ping", rapidApiMiddleware.HealthCheckMiddleware)
-
-	limitpear := app.Group("/api/limitpear")
-	limitpear.Use(limitPearMiddleware.ProxyAuthMiddleware)
-	limitpear.Use("/ping", limitPearMiddleware.HealthCheckMiddleware)
+	app.Get("/api/marketplace/ping", func(c fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).SendString("PONG!")
+	})
+	marketplaceApi := app.Group("/api/marketplace", marketplaceApiMiddleware.Auth)
 
 	// admin handler
 	admin.Get("/", func(c fiber.Ctx) error {
@@ -74,9 +69,6 @@ func SetupRoutes(
 	internalApi.Post("/upload-media", internalApiHandler.UploadMedia).Name("Internal API - Upload Media")
 	internalApi.Post("/facts/create", internalApiHandler.CreateFunFact).Name("Internal API - Create Fun Facts")
 
-	// rapidapi api handler
-	rapidapi.Get("/fact", rapidApiHandler.GetOneRandomFunFact).Name("RapidApi - Get Random Fun Fact")
-
-	// limitpear api handler
-	limitpear.Get("/fact", limitPearHandler.GetOneRandomFunFact).Name("LimitPear API - Get Random Fun Fact")
+	// marketplace api handler
+	marketplaceApi.Get("/fact", marketplaceApiHandler.GetOneRandomFunFact).Name("Marketplace API - Get Random Fun Fact")
 }
