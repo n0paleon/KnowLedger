@@ -9,19 +9,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type RapidAPIHandler struct {
+type APIMarketplaceHandler struct {
 	log            *zap.Logger
 	funFactService *service.FunFactService
 }
 
-func NewRapidAPIHandler(log *zap.Logger, fs *service.FunFactService) *RapidAPIHandler {
-	return &RapidAPIHandler{
+func NewAPIMarketplaceHandler(log *zap.Logger, funFactService *service.FunFactService) *APIMarketplaceHandler {
+	return &APIMarketplaceHandler{
 		log:            log,
-		funFactService: fs,
+		funFactService: funFactService,
 	}
 }
 
-func (h *RapidAPIHandler) GetOneRandomFunFact(c fiber.Ctx) error {
+func (h *APIMarketplaceHandler) GetOneRandomFunFact(c fiber.Ctx) error {
 	response := new(dto.APIResponse)
 
 	fact, err := h.funFactService.GetOneRandomFunFact(c)
