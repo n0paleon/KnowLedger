@@ -61,7 +61,7 @@ func NewHttpServer(cfg *config.Config, redisClient redigo.UniversalClient) *fibe
 		JSONDecoder:     sonic.Unmarshal,
 		JSONEncoder:     sonic.Marshal,
 		StructValidator: NewStructValidator(),
-		BodyLimit:       30 * 1024 * 1024,
+		BodyLimit:       100 * 1024 * 1024, // 100MB
 	})
 
 	if !cfg.App.Dev {

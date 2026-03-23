@@ -19,7 +19,7 @@ type AdminApiHandler struct {
 	log            *zap.Logger
 }
 
-const MaxFileUpload = 15 * 1024 * 1024 // 15MB
+const MaxFileUpload = 100 * 1024 * 1024 // 100MB
 
 func NewAdminApiHandler(fs *service.FunFactService, ms *service.MediaService, ps *service.ProfileService, gcS *service.GCService, logger *zap.Logger) *AdminApiHandler {
 	return &AdminApiHandler{
